@@ -23,7 +23,7 @@ local C = ffi.C
 
 local ArrayT_cdef = [[
 struct {
-    $ *a;
+    $   *a;
     int n_max;
 }
 ]]
@@ -31,9 +31,9 @@ struct {
 
 local ArrayT_mt = {
 
-    __new = function( at_ct, ct_size, n_max )
-        return ffi.new( at_ct, {
-            a = C.malloc( n_max * ct_size ),
+    __new = function( at, n_max )
+        return ffi.new( at, {
+            a = C.malloc( n_max * at._ct_size ),
             n_max = n_max,
         })
     end,
@@ -74,11 +74,14 @@ local ArrayT_mt = {
 function lds.ArrayT( ct )
     if type(ct) ~= 'cdata' then error("argument 1 is not a valid 'cdata'") end
 
+    -- clone the metatable and insert type-specific data
+    local at_mt = {}
+    for k, v in pairs(ArrayT_mt) do at_mt[k] = v end
+    at_mt.__index._ct = ct
+    at_mt.__index._ct_size = ffi.sizeof(ct)
+
     local at = ffi.typeof( ArrayT_cdef, ct )
-    local at_m = ffi.metatype( at, ArrayT_mt )
-    return function( n_max )
-        return at_m( ffi.sizeof(ct), n_max )
-    end
+    return ffi.metatype( at, at_mt )
 end
 
 

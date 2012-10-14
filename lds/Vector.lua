@@ -26,10 +26,9 @@ local C = ffi.C
 
 local VectorT_cdef = [[
 struct {
-    $ *a;
+    $   *a;
     int alength;
     int n;
-    size_t ct_size;
 }
 ]]
 
@@ -38,8 +37,8 @@ local function VectorT__resize( v, reserve_n )
     local blength = math.max( 1, reserve_n or (2 * v.n) )
     if v.alength >= blength then return end
 
-    local b = ffi.cast( v.a, C.malloc( blength * v.ct_size ) )
-    ffi.copy( b, v.a, (v.n * v.ct_size) )
+    local b = ffi.cast( v.a, C.malloc( blength * v._ct_size ) )
+    ffi.copy( b, v.a, (v.n * v._ct_size) )
     C.free( v.a )
     v.a = b
     v.alength = blength
@@ -48,12 +47,11 @@ end
 
 local VectorT_mt = {
 
-    __new = function( vt_ct, ct_size )
-        return ffi.new( vt_ct, {
-            a = C.malloc( 1 * ct_size ),
+    __new = function( vt )
+        return ffi.new( vt, {
+            a = C.malloc( 1 * vt._ct_size ),
             alength = 1,
             n = 0,
-            ct_size = ct_size,
         })
     end,
 
@@ -76,7 +74,7 @@ local VectorT_mt = {
         end,
 
         capacity = function( self )
-            return math.floor( self.alength / self.ct_size )
+            return math.floor( self.alength / self._ct_size )
         end,
 
         reserve = function( self, n )
@@ -97,9 +95,7 @@ local VectorT_mt = {
 
         clear = function(self)
             self.n = 0
-            C.free( self.a )
-            self.a = C.malloc( 1 * self.ct_size )
-            self.alength = 1
+            VectorT__resize( self )
         end,
 
         insert = function( self, i, x )
@@ -148,11 +144,14 @@ local VectorT_mt = {
 function lds.VectorT( ct )
     if type(ct) ~= 'cdata' then error("argument 1 is not a valid 'cdata'") end
 
+    -- clone the metatable and insert type-specific data
+    local vt_mt = {}
+    for k, v in pairs(VectorT_mt) do vt_mt[k] = v end
+    vt_mt.__index._ct = ct
+    vt_mt.__index._ct_size = ffi.sizeof(ct)
+
     local vt = ffi.typeof( VectorT_cdef, ct )
-    local vt_m = ffi.metatype( vt, VectorT_mt )
-    return function()
-        return vt_m( ffi.sizeof(ct) )
-    end
+    return ffi.metatype( vt, vt_mt )
 end
 
 

@@ -26,11 +26,10 @@ local C = ffi.C
 
 local QueueT_cdef = [[
 struct {
-    $ *a;
+    $   *a;
     int alength;
     int j;
     int n;
-    size_t ct_size;
 }
 ]]
 
@@ -39,7 +38,7 @@ local function QueueT__resize( q, reserve_n )
     local blength = math.max( 1, reserve_n or (2 * q.n) )
     if q.alength >= blength then return end
 
-    local b = ffi.cast( q.a, C.malloc( blength * q.ct_size ) )
+    local b = ffi.cast( q.a, C.malloc( blength * q._ct_size ) )
     local k = 0
     while k < q.n do
         local idx = (q.j + k) % q.alength
@@ -54,13 +53,12 @@ end
 
 local QueueT_mt = {
     
-    __new = function( qt_ct, ct_size )
-        return ffi.new( qt_ct, {
-            a = C.malloc( 1 * ct_size ),
+    __new = function( qt )
+        return ffi.new( qt, {
+            a = C.malloc( 1 * qt._ct_size ),
             alength = 1,
             n = 0,
             j = 0,
-            ct_size = ct_size,
         })
     end,
 
@@ -79,7 +77,7 @@ local QueueT_mt = {
         end,
 
         capacity = function( self )
-            return math.floor( self.alength / self.ct_size )
+            return math.floor( self.alength / self._ct_size )
         end,
 
         reserve = function( self, n )
@@ -128,11 +126,14 @@ local QueueT_mt = {
 function lds.QueueT( ct )
     if type(ct) ~= 'cdata' then error("argument 1 is not a valid 'cdata'") end
 
+    -- clone the metatable and insert type-specific data
+    local qt_mt = {}
+    for k, v in pairs(QueueT_mt) do qt_mt[k] = v end
+    qt_mt.__index._ct = ct
+    qt_mt.__index._ct_size = ffi.sizeof(ct)
+
     local qt = ffi.typeof( QueueT_cdef, ct )
-    local qt_m = ffi.metatype( qt, QueueT_mt )
-    return function()
-        return qt_m( ffi.sizeof( ct ) )
-    end
+    return ffi.metatype( qt, qt_mt )
 end
 
 
