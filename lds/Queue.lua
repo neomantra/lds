@@ -40,8 +40,11 @@ local function QueueT__resize( q, reserve_n )
     if q.alength >= blength then return end
 
     local b = ffi.cast( q.a, C.malloc( blength * q.ct_size ) )
-    for k = 0, q.n do
-        b[k] = q.a[(q.j + k) % q.alength]
+    local k = 0
+    while k < q.n do
+        local idx = (q.j + k) % q.alength
+        b[k] = q.a[idx]
+        k = k + 1
     end
     C.free( q.a )
     q.a = b

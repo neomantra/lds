@@ -119,8 +119,10 @@ local VectorT_mt = {
             if type(i) == 'nil' then return self:pop_back() end  -- handle default index like table.remove
             lds.assert( i >= 0 and i < self.alength, "remove: index out of bounds" )
             local x = self.a[i]
-            for j = i, self.n - 1 do
+            local j = i
+            while j < (self.n - 1) do
                 self.a[j] = self.a[j + 1]
+                j = j + 1
             end
             self.n = self.n - 1
             if self.alength >= (3 * self.n) then VectorT__resize(self) end

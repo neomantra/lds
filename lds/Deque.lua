@@ -39,9 +39,11 @@ struct {
 local function DequeT__resize( d, reserve_n )
     local blength = math.max( 1, reserve_n or (2 * d.n) )
     local b = ffi.cast( d.a, C.malloc( blength * d.ct_size ) )
-    for k = 0, d.n do
+    local k = 0
+    while k < d.n do
         local idx = (d.j + k) % d.alength
         b[k] = d.a[idx]
+        k = k + 1
     end
     C.free( d.a )
     d.a = b
