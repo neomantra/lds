@@ -53,6 +53,7 @@ local function HashSetT__resize( ust )
     ust.d = 1
     while blshift(1, ust.d) <= ust.n do ust.d = ust.d + 1 end
     local shift_d = blshift( 1, ust.d )
+    if shift_d == ust.tlength then return end  -- don't need to resize
 
     local newTable = ffi.cast( ust.t, C.malloc( ust._vt_size * shift_d ) )
     for i = 0, shift_d-1 do
@@ -87,7 +88,7 @@ local HashSetT_mt = {
             tlength = 2,
             n = 0,
             d = 1,
-            z = bor(math.random(), 1),  -- 1 is a random odd integer
+            z = bor(math.random(lds.INT_MAX), 1),  -- 1 is a random odd integer
         })
         -- TODO: figure out better way
         for i = 0, 1 do

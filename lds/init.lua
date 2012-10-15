@@ -28,5 +28,9 @@ function lds.assert( x, msg )
 end
 
 
+-- Constants
+lds.INT_MAX = 2147483647
+
+
 -- Return the lds API
 return lds

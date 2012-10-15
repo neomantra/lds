@@ -11,13 +11,9 @@ hash functionality
 local lds = require 'lds/init'
 
 
-function lds.default_hash_function( x )
-    return x
-    -- TODO: implement hash for complex types or metatable or something
-end
-
+-- simple hash function
 function lds.hash( x )
-    return lds.default_hash_function( x )
+    return tonumber(x)
 end
 
 
