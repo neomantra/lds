@@ -139,7 +139,12 @@ local HashMapT_mt = {
 
             if (self.n + 1) > self.t:size() then HashMapT__resize(self) end
             local j = HashMapT__hash(self, k) 
-            self.t[j]:push_back(self._pt(k, v))
+            -- initialization of nested structs are not compiled,
+            -- so we use a pre-allocated placeholder, `_pt_scratch`, stored in the metatable
+            -- otherwise, this would just be: self.t[j]:push_back(self._pt(k, v))
+            local pt = self._pt_scratch
+            pt.key, pt.val = k, v
+            self.t[j]:push_back(pt)
             self.n = self.n + 1
             return true
         end,
@@ -197,6 +202,7 @@ function lds.HashMapT( ct_key, ct_val )
     umt_mt.__index._pt_size = ffi.sizeof(pt)
     umt_mt.__index._vt = vt
     umt_mt.__index._vt_size = ffi.sizeof(vt)
+    umt_mt.__index._pt_scratch = pt()  -- pre-allocated PairT
 
     return ffi.metatype( umt, umt_mt )
 end
