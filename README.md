@@ -11,6 +11,7 @@ The LuaJIT FFI enables the instantiation and manipulation of C objects directly 
 
 **IMPORTANT:**  **lds** requires recent LuaJIT FFI features (parameterized types and __new metamethod).  These were added in June 2012, after beta10 was released.
 
+
 ## Example
 
 The following example shows a *cdata* being held in a HashMap, mapping ID numbers to elements. 
@@ -36,9 +37,10 @@ v:push_back( Item_t( 101, "Orange", 10 ) )
 v:push_back( Item_t( 102, "Lemon",   6 ) )
 assert( v:size() == 3 )
 assert( v:get(0).id == 100 )
+assert( v:get(2).id == 102 )
 ```
 
-Documentation for each container is pretty sparse right now, but the source is pretty readable.  Also look in the [test scripts](https://github.com/neomantra/lds/tree/master/tests).
+Documentation for each container is pretty sparse right now -- try reading the test scripts](https://github.com/neomantra/lds/tree/master/tests).  The source is decently readable (much easier than the STL implementation).
 
 ## Containers
 
@@ -52,9 +54,16 @@ Documentation for each container is pretty sparse right now, but the source is p
 
     * Queue - a FIFO (first-in-first-out) queue, backed by an array, with an interface based on [std::queue](http://www.cplusplus.com/reference/stl/queue/). ([ODS](http://opendatastructures.org/ods-cpp/2_3_Array_Based_Queue.html))
 
-    * Deque - a double-ended queue, backed by an array, with an interface based on [std::deque](http://www.cplusplus.com/reference/stl/deque/).  ([ODS](http://opendatastructures.org/ods-cpp/2_4_Fast_Deque_Operations_U.html)).  **not well tested**
+    * Deque - a double-ended queue, backed by an array, with an interface based on [std::deque](http://www.cplusplus.com/reference/stl/deque/).  ([ODS](http://opendatastructures.org/ods-cpp/2_4_Fast_Deque_Operations_U.html)).  **some tests are failing, it is broken I think**
 
- * Next highest priority (for the author) is HashMap and HashSet… available soon.  After that, probably RedBlackTree to get std::set and std::map.
+ * Sets and Maps
+
+    * HashSet - a chained hash-table set, with an interface based on [std::unordered_set](http://www.cplusplus.com/reference/stl/unordered_set/). It is a `set` in the STL sense, in that it can contain only one of a given value.  ([ODS](http://opendatastructures.org/ods-cpp/5_1_Hashing_with_Chaining.html))
+
+    * HashMap - a chained hash-table map, with an interface based on [std::unordered_map](http://www.cplusplus.com/reference/stl/unordered_map/). It is a `map` in the STL sense, in that it can contain only one value for a given key.  ([ODS](http://opendatastructures.org/ods-cpp/5_1_Hashing_with_Chaining.html))
+
+    * **TODO: ordered sets/maps based on red-black trees
+
 
 ## Installation
 
@@ -80,12 +89,17 @@ local q2 = dq_t()
 local q = lds.ArrayQueue( double_t )
 ```
 
+## Caveats
+
 **All indexed access is 0-based, *not* 1-based.**
 
+**All the arrays are created with malloc/free.  You probably only want to store simple data.  In other words, not structs that use with __new and __gc metamethods**
+
+** Right now the hash function is identity (hash(x) = x), so keys are limited to simple numeric types (I think).
 
 ## TODO
 
-  * Implement ChainedHashTable and RedBlackTree
+  * Implement RedBlackTree
   
   * Test Deque
   
@@ -113,7 +127,9 @@ local q = lds.ArrayQueue( double_t )
 
 ## Support
 
-Please submit feature requests and bug reports at the [Issues page on Gihub](http://github.com/neomantra/lds/issues).
+This library is fresh meat and a moving target... please help make it awesome...
+
+Submit feature requests and bug reports at the [Issues page on Gihub](http://github.com/neomantra/lds/issues).
 
 
 ## Contributors
