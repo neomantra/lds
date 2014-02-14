@@ -82,12 +82,12 @@ local VectorT_mt = {
         end,
 
         get = function( self, i )
-            lds.assert( i >= 0 and i < self.alength, "get: index out of bounds" )
+            if i < 0 or i >= self.alength then error("get: index out of bounds") end
             return self.a[i]
         end,
 
         set = function( self, i, x )
-            lds.assert( i >= 0 and i < self.alength, "set: index out of bounds" )
+            if i < 0 or i >= self.alength then error("set: index out of bounds") end
             local y = self.a[i]
             self.a[i] = x
             return y
@@ -100,7 +100,7 @@ local VectorT_mt = {
 
         insert = function( self, i, x )
             if type(x) == 'nil' then self:push_back(i) end  -- handle default index like table.insert
-            lds.assert( i >= 0 and i <= self.alength, "insert: index out of bounds" )
+            if i < 0 or i > self.alength then error("insert: index out of bounds") end
             if self.n + 1 > self.alength then VectorT__resize(self) end
             local j = self.n
             while j > i do
@@ -113,7 +113,7 @@ local VectorT_mt = {
 
         erase = function( self, i )
             if type(i) == 'nil' then return self:pop_back() end  -- handle default index like table.remove
-            lds.assert( i >= 0 and i < self.alength, "remove: index out of bounds" )
+            if i < 0 or i >= self.alength then error("remove: index out of bounds") end
             local x = self.a[i]
             local j = i
             while j < (self.n - 1) do

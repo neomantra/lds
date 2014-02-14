@@ -50,10 +50,9 @@ struct {
 
 
 local function HashMapT__hash( ust, x )
-    local HashMapT__w = 32
     return brshift(
         (ust.z * lds.hash(x)),
-        (HashMapT__w - ust.d) )
+        (32 - ust.d) )  -- HashMapT__w = 32
 end
 
 
@@ -75,8 +74,7 @@ local function HashMapT__resize( ust )
     for i = 0, ust.tlength-1 do
         for j = 0, ust.t[i]:size()-1 do
             local pair = ust.t[i]:get(j)
-            local h = HashMapT__hash(ust, pair.key)
-            newTable[h]:push_back(pair)
+            newTable[HashMapT__hash(ust, pair.key)]:push_back(pair)
         end
         -- TODO: figure out better way
         C.free( ust.t[i].a )
@@ -91,13 +89,13 @@ end
 local HashMapT_mt = {
     
     __new = function( ust )
-        local us = ffi.new( ust, {
-            t = C.malloc( 2 * ust._vt_size ),
-            tlength = 2,
-            n = 0,
-            d = 1,
-            z = bor(math.random(lds.INT_MAX), 1),  -- 1 is a random odd integer
-        })
+        local us = ffi.new( ust,
+            C.malloc( 2 * ust._vt_size ),    -- t
+            2,                               -- tlength
+            0,                               -- n
+            1,                               -- d
+            bor(math.random(lds.INT_MAX), 1) -- z, 1 is a random odd integer
+        )
         -- TODO: figure out better way
         for i = 0, 1 do
             us.t[i].a = C.malloc( 1 * ust._pt_size )
@@ -150,10 +148,9 @@ local HashMapT_mt = {
         end,
 
         remove = function( self, k )
-            local j = HashMapT__hash(self, k)
-            local list = self.t[j]
-            local i = 0
-            while i < list:size() do
+            local list = self.t[HashMapT__hash(self, k)]
+            local i, list_size = 0, list:size()
+            while i < list_size do
                 local y = list:get( i )
                 if k == y.key then
                     list:erase( i )
@@ -166,10 +163,11 @@ local HashMapT_mt = {
         end,
 
         find = function( self, k )
-            local j = HashMapT__hash(self, k)
-            local list = self.t[j]
-            local i = 0
-            while i < list:size() do
+            --local j = HashMapT__hash(self, k)
+            --local list = self.t[j]  -- TODO: NYI: register coalescing too complex
+            local list = self.t[HashMapT__hash(self, k)]
+            local i, list_size = 0, list:size()
+            while i < list_size do
                 local pair = list:get(i)
                 if k == pair.key then return pair end
                 i = i + 1
