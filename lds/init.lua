@@ -28,6 +28,19 @@ function lds.assert( x, msg )
 end
 
 
+-- simple deep copy function
+-- used to copy prototypical metatables
+local function simple_deep_copy( x )
+    if type(x) ~= 'table' then return x end
+    local t = {}
+    for k, v in pairs(x) do
+        t[k] = simple_deep_copy(v)
+    end
+    return t
+end
+lds.simple_deep_copy = simple_deep_copy
+
+
 -- Constants
 lds.INT_MAX = 2147483647
 

@@ -194,8 +194,7 @@ function lds.DequeT( ct )
     if type(ct) ~= 'cdata' then error("argument 1 is not a valid 'cdata'") end
 
     -- clone the metatable and insert type-specific data
-    local dt_mt = {}
-    for k, v in pairs(DequeT_mt) do dt_mt[k] = v end
+    local dt_mt = lds.simple_deep_copy(DequeT_mt)
     dt_mt.__index._ct = ct
     dt_mt.__index._ct_size = ffi.sizeof(ct)
 

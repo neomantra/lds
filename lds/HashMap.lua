@@ -194,8 +194,7 @@ function lds.HashMapT( ct_key, ct_val )
     local umt = ffi.typeof( HashMapT_cdef, vt )
 
     -- clone the metatable and insert type-specific data
-    local umt_mt = {}
-    for k, v in pairs(HashMapT_mt) do umt_mt[k] = v end
+    local umt_mt = lds.simple_deep_copy(HashMapT_mt)
     umt_mt.__index._ct_key = ct_key
     umt_mt.__index._ct_val = ct_val
     umt_mt.__index._pt = pt

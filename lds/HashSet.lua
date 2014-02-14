@@ -173,8 +173,7 @@ function lds.HashSetT( ct )
     local ust = ffi.typeof( HashSetT_cdef, vt )
 
     -- clone the metatable and insert type-specific data
-    local ust_mt = {}
-    for k, v in pairs(HashSetT_mt) do ust_mt[k] = v end
+    local ust_mt = lds.simple_deep_copy(HashSetT_mt)
     ust_mt.__index._ct = ct
     ust_mt.__index._ct_size = ffi.sizeof(ct)
     ust_mt.__index._vt = vt

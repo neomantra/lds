@@ -127,8 +127,7 @@ function lds.QueueT( ct )
     if type(ct) ~= 'cdata' then error("argument 1 is not a valid 'cdata'") end
 
     -- clone the metatable and insert type-specific data
-    local qt_mt = {}
-    for k, v in pairs(QueueT_mt) do qt_mt[k] = v end
+    local qt_mt = lds.simple_deep_copy(QueueT_mt)
     qt_mt.__index._ct = ct
     qt_mt.__index._ct_size = ffi.sizeof(ct)
 

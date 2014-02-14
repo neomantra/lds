@@ -145,8 +145,7 @@ function lds.VectorT( ct )
     if type(ct) ~= 'cdata' then error("argument 1 is not a valid 'cdata'") end
 
     -- clone the metatable and insert type-specific data
-    local vt_mt = {}
-    for k, v in pairs(VectorT_mt) do vt_mt[k] = v end
+    local vt_mt = lds.simple_deep_copy(VectorT_mt)
     vt_mt.__index._ct = ct
     vt_mt.__index._ct_size = ffi.sizeof(ct)
 

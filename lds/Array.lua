@@ -75,8 +75,7 @@ function lds.ArrayT( ct )
     if type(ct) ~= 'cdata' then error("argument 1 is not a valid 'cdata'") end
 
     -- clone the metatable and insert type-specific data
-    local at_mt = {}
-    for k, v in pairs(ArrayT_mt) do at_mt[k] = v end
+    local at_mt = lds.simple_deep_copy(ArrayT_mt)
     at_mt.__index._ct = ct
     at_mt.__index._ct_size = ffi.sizeof(ct)
 
