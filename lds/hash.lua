@@ -10,6 +10,8 @@ hash functionality
 
 local lds = require 'lds/init'
 
+local bit = require 'bit'
+local blshift, brshift, bxor =  bit.lshift, bit.rshift, bit.bxor
 
 -- simple hash function
 function lds.hash( x )
