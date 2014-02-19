@@ -1,8 +1,8 @@
 --[[
 lds - LuaJIT Data Structures
 
-Copyright (c) 2012 Evan Wies.  All righs reserved.
-See the COPYRIGHT file for licensing.
+@copyright Copyright (c) 2012-2014 Evan Wies.  All rights reserved.
+@license MIT License, see the COPYRIGHT file.
 
 hash functionality
 

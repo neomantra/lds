@@ -1,3 +1,9 @@
+//
+// lds - LuaJIT Data Structures
+//
+// Copyright (c) 2012-2014 Evan Wies.  All rights reserved.
+// MIT License, see the COPYRIGHT file.
+//
 // Inserts a number of random points
 // into random indexes in a boost::unordered_map.
 //

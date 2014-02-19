@@ -1,24 +1,22 @@
 --[[
 lds - LuaJIT Data Structures
 
-Copyright (c) 2012 Evan Wies.  All righs reserved.
-See the COPYRIGHT file for licensing.
+@copyright Copyright (c) 2012-2014 Evan Wies.  All rights reserved.
+@license MIT License, see the COPYRIGHT file.
 
 HashMap
 
-A map implemented as a chained hash table, with an interface based on std::unordered_map.
+A map implemented as a chained hash table.
 
-TODO: documentation here
-
-For complexity details of HashMap, see ChainedHashTable at opendatastructures.org:
+Implementation is based on ChainedHashTable at opendatastructures.org:
 http://opendatastructures.org/ods-cpp/5_1_Hashing_with_Chaining.html
 
-TODO: bounds check (return nil or error?)
-TODO: allocator
 TODO: iterator
-TODO: full __index and __newindex?
+TODO: fixup hash function
+TODO: reserve buckets, e.g. unordered_map::reserve, max_load_factor
 
 --]]
+
 
 local lds = require 'lds/hash'
 require 'lds/Vector'
@@ -40,173 +38,221 @@ struct {
 
 local HashMapT_cdef = [[
 struct {
-    $   *t; // lds.Vector<PairT>
-    int tlength;
-    int n;
-    int d;
-    int z;
+    $ * __t; // lds.Vector<PairT>
+    int __tsize;
+    int __size;
+    int __dim;
+    int __z;
 }
 ]]
 
 
-local function HashMapT__hash( ust, x )
+local function HashMapT__hash( self, x )
     return brshift(
-        (ust.z * lds.hash(x)),
-        (32 - ust.d) )  -- HashMapT__w = 32
+        (self.__z * lds.hash(x)),
+        (32 - self.__dim) )  -- HashMapT__w = 32
 end
 
 
-local function HashMapT__resize( ust )
-    ust.d = 1
-    while blshift(1, ust.d) <= ust.n do ust.d = ust.d + 1 end
-    local shift_d = blshift( 1, ust.d )
-    if shift_d == ust.tlength then return end  -- don't need to resize
+local function HashMapT__resize( self )
+    self.__dim = 1
+    while blshift(1, self.__dim) <= self.__size do self.__dim = self.__dim + 1 end
+    local shift_dim = blshift( 1, self.__dim )
+    if shift_dim == self.__tsize then return end  -- don't need to resize
 
-    local newTable = ffi.cast( ust.t, C.malloc( ust._vt_size * shift_d ) )
-    for i = 0, shift_d-1 do
-        -- TODO: there has to be a better way
-        local nti = newTable[i]
-        nti.a = C.malloc( 1 * ust._pt_size )
-        nti.alength = 1
-        nti.n = 0
+    local ptr = self.__talloc:allocate( shift_dim )
+    local new_t = ffi.cast( self.__t, ptr )
+    for i = 0, shift_dim-1 do
+        self.__vt.__construct(new_t[i])
     end
 
-    for i = 0, ust.tlength-1 do
-        for j = 0, ust.t[i]:size()-1 do
-            local pair = ust.t[i]:get(j)
-            newTable[HashMapT__hash(ust, pair.key)]:push_back(pair)
+    for i = 0, self.__tsize-1 do
+        for j = 0, self.__t[i]:size()-1 do
+            local pair = self.__t[i]:get(j)
+            new_t[HashMapT__hash(self, pair.key)]:push_back(pair)
         end
-        -- TODO: figure out better way
-        C.free( ust.t[i].a )
+        self.__vt.__destruct( self.__t[i] )
     end
-    C.free( ust.t )
+    self.__talloc:deallocate( self.__t )
 
-    ust.t = newTable
-    ust.tlength = shift_d
+    self.__t = new_t
+    self.__tsize = shift_dim
 end
 
+
+-- HashMap public methods
+local HashMap = {}
+
+
+------------------------------
+-- Capacity methods
+
+--- Returns the number of elements in the HashMap. 
+-- 
+-- This is the number of elements in the HashMap, not necessarily the total allocated memory.
+--
+-- The __len metamethod returns the same value so you can use the # operator
+--
+-- It can also be accessed as the field `__size`, although
+-- you should never write to this youself.
+--
+-- @return Returns the number of elements in the HashMap. 
+function HashMap:size()
+    return self.__size
+end
+
+--- Returns true if the HashMap is empty.
+-- @return true if the HashMap size is 0, false otherwise.
+function HashMap:empty()
+    return self.__size == 0
+end
+
+
+------------------------------------
+-- Element Access functions
+--
+
+--- Get key/value pair at key `k`.
+--
+-- Returns nil if the key is not found.
+--
+-- @param k Key of the element to find.
+-- @return The key/value pair at the specified key in the HashMap.
+function HashMap:find( k )
+    local list = self.__t[HashMapT__hash(self, k)]
+    for i = 0, list:size()-1 do
+        local pair = list:get(i)
+        if k == pair.key then return pair end
+    end
+    return nil
+end
+
+
+------------------------------
+-- Modifier functions
+
+
+--- Inserts element value `v` at key `k`.
+--
+-- Returns the previous value, if it existed, or true if it did not.
+--
+-- @param k Key to set in the HashMap.
+-- @param v Element to set at that key
+--
+-- @return The previous element at the specified key in the HashMap,
+-- or true if this is a new key.
+function HashMap:insert( k, v )
+    local pair = self:find( k )
+    if pair then -- if it exists, update the value
+        local old_val = pair.val
+        pair.val = v
+        return old_val
+    end
+
+    if (self.__size + 1) > self.__t:size() then HashMapT__resize(self) end
+    local j = HashMapT__hash(self, k) 
+    -- initialization of nested structs are not compiled,
+    -- so we use a pre-allocated placeholder, `_pt_scratch`, stored in the metatable
+    -- otherwise, this would just be: self.t[j]:push_back(self.__pt(k, v))
+    local pt = self.__pt_scratch
+    pt.key, pt.val = k, v
+    self.__t[j]:push_back(pt)
+    self.__size = self.__size + 1
+    return true
+end
+
+
+--- Remove element at given key.
+-- @param  k  Key to remove
+-- @return The item previously at the key, or nil if absent.
+function HashMap:remove( k )
+    local list = self.__t[HashMapT__hash(self, k)]
+    for i = 0, list:size()-1 do
+        local y = list:get( i )
+        if k == y.key then
+            local old_val = y.val
+            list:erase( i )
+            self.__size = self.__size - 1
+            return old_val
+        end
+    end
+    return nil
+end
+
+
+--- Clears all the elements from the HashMap.
+-- The allocated memory is reclaimed.
+function HashMap:clear()
+    self.__size = 0
+    HashMapT__resize( self )
+end
+
+
+------------------------------
+-- Metatable
 
 local HashMapT_mt = {
     
-    __new = function( ust )
-        local us = ffi.new( ust,
-            C.malloc( 2 * ust._vt_size ),    -- t
-            2,                               -- tlength
-            0,                               -- n
-            1,                               -- d
-            bor(math.random(lds.INT_MAX), 1) -- z, 1 is a random odd integer
+    __new = function( hmt )
+        local ptr = hmt.__talloc:allocate( 2 )
+        local hm = ffi.new( hmt,
+            ptr,                               -- __t
+            2,                                 -- __tsize
+            0,                                 -- __size
+            1,                                 -- __dim
+            bor(math.random(blshift(1,32)), 1) -- __z, a random odd integer
+                                               --     HashMapT__w = 32
         )
-        -- TODO: figure out better way
-        for i = 0, 1 do
-            us.t[i].a = C.malloc( 1 * ust._pt_size )
-            us.t[i].alength = 1
-            us.t[i].n = 0
+        for i = 0, hm.__tsize-1 do
+            hm.__vt.__construct(hm.__t[i])
         end
-        return us
+        return hm
     end,
 
     __gc = function( self )
-        -- TODO: figure out better way
-        for i = 0, self.tlength-1 do
-            C.free( self.t[i].a )
+        for i = 0, self.__tsize-1 do
+            self.__vt.__destruct(self.__t[i])
         end
-        C.free( self.t )
+        self.__vt.__alloc:deallocate( self.__t )
     end,
 
+    --- __len metamethod, returning the number of elements in the HashMap. 
+    -- See also HashMap:size() and HashMap.__size
+    -- @return The number of elements in the HashMap. 
     __len = function( self )
-        return self.n
+        return self.__size
     end,
 
-    __index = {
-
-        size = function( self )
-            return self.n
-        end,
-
-        empty = function( self )
-            return self.n == 0
-        end,
-
-        insert = function( self, k, v )
-            local pair = self:find( k )
-            if pair then
-                local old_val = pair.val
-                pair.val = v
-                return old_val
-            end
-
-            if (self.n + 1) > self.t:size() then HashMapT__resize(self) end
-            local j = HashMapT__hash(self, k) 
-            -- initialization of nested structs are not compiled,
-            -- so we use a pre-allocated placeholder, `_pt_scratch`, stored in the metatable
-            -- otherwise, this would just be: self.t[j]:push_back(self._pt(k, v))
-            local pt = self._pt_scratch
-            pt.key, pt.val = k, v
-            self.t[j]:push_back(pt)
-            self.n = self.n + 1
-            return true
-        end,
-
-        remove = function( self, k )
-            local list = self.t[HashMapT__hash(self, k)]
-            local i, list_size = 0, list:size()
-            while i < list_size do
-                local y = list:get( i )
-                if k == y.key then
-                    list:erase( i )
-                    self.n = self.n - 1
-                    return y.val
-                end
-                i = i + 1
-            end
-            return nil
-        end,
-
-        find = function( self, k )
-            --local j = HashMapT__hash(self, k)
-            --local list = self.t[j]  -- TODO: NYI: register coalescing too complex
-            local list = self.t[HashMapT__hash(self, k)]
-            local i, list_size = 0, list:size()
-            while i < list_size do
-                local pair = list:get(i)
-                if k == pair.key then return pair end
-                i = i + 1
-            end
-            return nil
-        end,
-
-        clear = function( self )
-            self.n = 0
-            HashMapT__resize( self )
-        end,
-    },
+    __index = HashMap,
 }
 
 
-function lds.HashMapT( ct_key, ct_val )
+function lds.HashMapT( ct_key, ct_val, allocator_class )
     if type(ct_key) ~= 'cdata' then error("argument 1 is not a valid 'cdata'") end
     if type(ct_val) ~= 'cdata' then error("argument 2 is not a valid 'cdata'") end
+    allocator_class = allocator_class or lds.MallocAllocator
 
     local pt = ffi.typeof( PairT_cdef, ct_key, ct_val )
-    local vt = lds.VectorT( pt )
-    local umt = ffi.typeof( HashMapT_cdef, vt )
+    local vt = lds.VectorT( pt, allocator_class )
+    local hmt = ffi.typeof( HashMapT_cdef, vt )  -- HashMap<key, val> ct
 
     -- clone the metatable and insert type-specific data
-    local umt_mt = lds.simple_deep_copy(HashMapT_mt)
-    umt_mt.__index._ct_key = ct_key
-    umt_mt.__index._ct_val = ct_val
-    umt_mt.__index._pt = pt
-    umt_mt.__index._pt_size = ffi.sizeof(pt)
-    umt_mt.__index._vt = vt
-    umt_mt.__index._vt_size = ffi.sizeof(vt)
-    umt_mt.__index._pt_scratch = pt()  -- pre-allocated PairT
+    local hmt_mt = lds.simple_deep_copy(HashMapT_mt)
+    hmt_mt.__index.__ct_key = ct_key    -- the key ct
+    hmt_mt.__index.__ct_val = ct_val    -- the value ct
+    hmt_mt.__index.__pt = pt            -- the pair ct
+    hmt_mt.__index.__pt_size = ffi.sizeof(pt)
+    hmt_mt.__index.__vt = vt            -- the VectorT<pair> ct
+    hmt_mt.__index.__vt_size = ffi.sizeof(vt)
+    hmt_mt.__index.__pt_scratch = pt()  -- pre-allocated PairT
+    hmt_mt.__index.__talloc = allocator_class(vt)
 
-    return ffi.metatype( umt, umt_mt )
+    return ffi.metatype( hmt, hmt_mt )
 end
 
 
-function lds.HashMap( ct_key, ct_val )
-    return lds.HashMapT( ct_key, ct_val )()
+function lds.HashMap( ct_key, ct_val, allocator )
+    return lds.HashMapT( ct_key, ct_val, allocator )()
 end
 
 

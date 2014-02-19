@@ -1,26 +1,34 @@
 --[[
 lds - LuaJIT Data Structures
 
-Copyright (c) 2012 Evan Wies.  All righs reserved.
-See the COPYRIGHT file for licensing.
+Copyright (c) 2012-2014 Evan Wies.  All rights reserved.
+MIT License, see the COPYRIGHT file.
 
 Exercises lds.Array
 --]]
 
 local ffi = require 'ffi'
 local lds = require 'lds/Array'
+require 'lds/allocator'
 
 local double_t = ffi.typeof('double')
 
-local da_t = lds.ArrayT( double_t )
+for _, ct in pairs{ lds.uint32_t, double_t, lds.size_t } do
+    for _, alloc in pairs{ lds.MallocAllocator,
+                           lds.VLAAllocator,
+                           lds.JemallocAllocator,
+                         } do
+        local a_t = lds.ArrayT( ct, alloc )
 
-local da = da_t( 10 )
+        local a = a_t( 10 )
 
-assert( #da == 10 )
-assert( da:size() == 10 )
-assert( not da:empty() )
+        assert( #a == 10 )
+        assert( a:size() == 10 )
+        assert( not a:empty() )
 
-assert( da:get(0) == 0 )
+        assert( a:get(0) == 0 )
 
-assert( da:set(3, 5) == 0 )
-assert( da:get(3) == 5 )
+        assert( a:set(3, 5) == 0 )
+        assert( a:get(3) == 5 )
+    end
+end

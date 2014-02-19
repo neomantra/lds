@@ -1,24 +1,34 @@
 
 # lds - LuaJIT Data Structures
 
-## Introduction
+**lds** provides data structures which hold [LuaJIT *cdata*](http://luajit.org/ext_ffi_api.html).   
 
-**lds** provides containers, such as lists, maps, and hash tables, which hold [LuaJIT *cdata*](http://luajit.org/ext_ffi_api.html).   
+These containers cover the common use cases of Lua *tables*:
 
-The **lds** implementation is adapted from the libraries at [opendatastructures.org](http://opendatastructures.org), with its interface changed to be closer to the C++ [Standard Template Library (STL)](http://www.cplusplus.com/reference/stl/).  
+  * Array (fixed-size array)
+  * Vector (dynamically-sized array)
+  * HashMap (key-value store)
 
-The LuaJIT FFI enables the instantiation and manipulation of C objects directly in Lua; these objects called *cdata*.  Although *cdata* may be stored in Lua tables, they are subject to a 4GB memory limit and GC inefficiency [^1].  Furthermore, a developer may want more application-specific complexity characteristics than what a generic Lua table offers.
+## Installation
 
-**IMPORTANT:**  **lds** requires recent LuaJIT FFI features (parameterized types and __new metamethod).  These were added in June 2012, after beta10 was released.
+This library is currently only available as a [GitHub repo](https://github.com/neomantra/lds):
+```
+git clone https://github.com/neomantra/lds.git
+```
+
+To install, clone the repo and copy `lds.lua` and the **lds** directory (the one *inside* the repo) to somewhere on your LUA_PATH.  To use, simply `require` the module and use the returned value:
+```
+local lds = require 'lds'
+```
 
 
 ## Example
 
-The following example shows a *cdata* being held in a HashMap, mapping ID numbers to elements. 
+The following example shows a *cdata* being stored in a Vector and then retrieved from there are stored in a HashMap.
 
 ```lua
 local ffi = require 'ffi'
-local lds = require 'lds/Vector'
+local lds = require 'lds'
 
 ffi.cdef([[
 struct Item {
@@ -28,118 +38,81 @@ struct Item {
 };
 ]])
 
-local Item_t = ffi.typeof( 'Item' )
+local Item_t = ffi.typeof('struct Item')
 
 -- Create a Vector and add some items
-local v = Vector( Item_t )
-v:push_back( Item_t( 100, "Apple",  42 ) )
-v:push_back( Item_t( 101, "Orange", 10 ) )
-v:push_back( Item_t( 102, "Lemon",   6 ) )
+local v = lds.Vector( Item_t )
+v:push_back( Item_t( 100, 'Apple',  42 ) )
+v:push_back( Item_t( 101, 'Orange', 10 ) )
+v:push_back( Item_t( 102, 'Lemon',   6 ) )
 assert( v:size() == 3 )
 assert( v:get(0).id == 100 )
 assert( v:get(2).id == 102 )
+
+-- Now create a HashMap of Item id to Item
+-- Note this is stored by-value, not by-reference
+local map = lds.HashMap( ffi.typeof('int'), Item_t )
+for i = 0, v:size()-1 do  -- lds.Vector is 0-based
+    local item = v:get(i)
+    map:insert( item.id, item )  
+end
+assert( map:size() == 3 )
+assert( map:find(100).key == 100 )
+assert( map:find(100).val.inventory == 42 )
+assert( map:find(102).key == 102 )
+assert( map:find(102).val.inventory == 6 )
+
 ```
 
-Documentation for each container is pretty sparse right now -- try reading the test scripts](https://github.com/neomantra/lds/tree/master/tests).  The source is decently readable (much easier than the STL implementation).
+## Motivation
 
-## Containers
+Lua provides a powerful data structure called a *table*.  A table is an heterogeneous associative array -- its keys and values can be any type (except *nil*).
+  
+The [LuaJIT FFI](http://luajit.org/ext_ffi.html) enables the instantiation and manipulation of C objects directly in Lua; these objects called *cdata*.  Although *cdata* may be stored in Lua tables (but [are not suitable as keys](http://luajit.org/ext_ffi_semantics.html#cdata_key)), when used this way they are subject to a [4GB memory limit and GC inefficiency](http://lua-users.org/lists/lua-l/2010-11/msg00241.html).
 
-**lds** provides a variety of containers.  Most of these interfaces are based on the C++ Standard Template Library](http://www.cplusplus.com/reference/stl/).  To understand the implementations and theory, consult the [opendatastructures.org](http://opendatastructures.org/ods-cpp/) ("ODS") documentation.
+**lds** provides the containers Array, Vector, and HashMap, which cover the common use cases of Lua *tables*.  However, the memory of these containers are managed through user-specified allocators (e.g. *malloc*) and thus are not subject to the LuaJIT memory limit.  It is also significantly lower load on the LuaJIT Garbage Collector.
 
-  * Array-Based sequences ([ODS](http://opendatastructures.org/ods-cpp/2_Array_Based_Lists.html))
-
-    * Array - a static array, akin to [std::array](http://www.cplusplus.com/reference/stl/array/).
-
-    * Vector - a dynamic array with an interface based on [std::vector](http://www.cplusplus.com/reference/stl/vector/).  This is a good alternative to storing *cdata* in a Lua table and using [table.insert](http://www.lua.org/manual/5.1/manual.html#pdf-table.insert) / [table.remove](http://www.lua.org/manual/5.1/manual.html#pdf-table.remove). ([ODS](http://opendatastructures.org/ods-cpp/2_1_Fast_Stack_Operations_U.html))
-
-    * Queue - a FIFO (first-in-first-out) queue, backed by an array, with an interface based on [std::queue](http://www.cplusplus.com/reference/stl/queue/). ([ODS](http://opendatastructures.org/ods-cpp/2_3_Array_Based_Queue.html))
-
-    * Deque - a double-ended queue, backed by an array, with an interface based on [std::deque](http://www.cplusplus.com/reference/stl/deque/).  ([ODS](http://opendatastructures.org/ods-cpp/2_4_Fast_Deque_Operations_U.html)).  **some tests are failing, it is broken I think**
-
- * Sets and Maps
-
-    * HashSet - a chained hash-table set, with an interface based on [std::unordered_set](http://www.cplusplus.com/reference/stl/unordered_set/). It is a `set` in the STL sense, in that it can contain only one of a given value.  ([ODS](http://opendatastructures.org/ods-cpp/5_1_Hashing_with_Chaining.html))
-
-    * HashMap - a chained hash-table map, with an interface based on [std::unordered_map](http://www.cplusplus.com/reference/stl/unordered_map/). It is a `map` in the STL sense, in that it can contain only one value for a given key.  ([ODS](http://opendatastructures.org/ods-cpp/5_1_Hashing_with_Chaining.html))
-
-    * **TODO: ordered sets/maps based on red-black trees
+One drawback to be aware of is that **lds** containers are homogeneous.  A given container has explicitly one key type and one *cdata* value type.  
 
 
-## Installation
+# API
 
-This library is currently only available as a [GitHub repo](https://github.com/neomantra/lds).  
+Documentation for this library is pretty sparse right now -- try reading the [test scripts](https://github.com/neomantra/lds/tree/master/tests).
 
-To install, clone the repo and put the contained **lds** directory somewhere on your LUA_PATH.
+The source is well documented and the implementation is decently readable -- much easier than an STL implementation.
 
   
-## Usage
-
-For each container type `Container`, there are two constructor functions: `ContainerT` and `Container` .  `ContainerT` takes a FFI `ct` and returns a `ctype` which can be used to create multiple containers of the same type.   `Container` takes a FFI `ct` and returns an actual container object.
-
-```lua
-local double_t = ffi.typeof('double')
-
--- Use the T form to create a new type and instantiate some queues.
-local dq_t = lds.ArrayQueueT( double_t )
-local q1 = dq_t()
-local q2 = dq_t()
-
--- Use the regular form to directly create a queue
--- This is less efficient if you are creating many queues of the same type.
-local q = lds.ArrayQueue( double_t )
-```
-
 ## Caveats
 
-**All indexed access is 0-based, *not* 1-based.**
+  * Array and Vector indices are 0-based, **not** 1-based.
 
-**All the arrays are created with malloc/free.  You probably only want to store simple data.  In other words, not structs that use with __new and __gc metamethods**
+  * Raw memory allocators are used, not the LuaJIT __new/__gc system, so you can only store simple data.  In other words, if your cdata allocates memory or other resources, you will need to manage that manually. 
 
-** Right now the hash function is identity (hash(x) = x), so keys are limited to simple numeric types (I think).
+  * Right now the hash function is identity (hash(x) = x), so keys are limited to simple numeric types and pointers.
+
+  * Although raw memory allocators are used, they may allocate memory in the range which LuaJIT desires.  The impact of this depends on which allocator you use and your OS.
+
 
 ## TODO
 
-  * Implement RedBlackTree
-  
-  * Test Deque
-  
-  * Document each class
-
+  * ldoc in wiki
+  * TODOs in HashMap
   * Rockspec
-
-  * Implement the rest of ODS?  Here's what's available:
-    * Array-based Lists: DualArrayDeque, RootishArrayStack
-    * Linked Lists:  SLList, DLList, SEList
-    * Skiplists:  SkiplistSSet, SkiplistList
-    * Hash Tables:  LinearHashTable
-    * Binary Trees:  BinaryTree, BinarySearchTree, Treap, ScapegoatTree, 
-    * Heaps:  BinaryHeap, MeldableHeap
-    * Graphs:  AdjacencyMatrix, AdjacencyLists
-    * Integer Structures: BinaryTrie, XFastTrie, YFastTrie
-
-  * Iterators
-
-  * Allocators (currently use malloc/free)
-    * realloc in model?
-
-  * Algorithms
 
 
 ## Support
 
-This library is fresh meat and a moving target... please help make it awesome...
-
-Submit feature requests and bug reports at the [Issues page on Gihub](http://github.com/neomantra/lds/issues).
+Submit feature requests and bug reports at the [Issues page on GitHub](http://github.com/neomantra/lds/issues).
 
 
 ## Contributors
 
-  * Evan Wies <evan@neomantra.net>
+  * Evan Wies
 
 
-## Acknowledgements
+## Acknowledgments
 
-Many thanks to Professor Pat Morin for a well written textbook and readable implementations, both released with open licences.  Read and learn at [opendatastructures.org](http://opendatastructures.org).
+Many thanks to Professor Pat Morin for a well written textbook and readable implementations, both released with open licenses.  HashMap is based on his [ChainedHashTable](http://opendatastructures.org/ods-cpp/5_1_Hashing_with_Chaining.html).   Read and learn at [opendatastructures.org](http://opendatastructures.org).
 
 
 ## LICENSE
@@ -148,16 +121,11 @@ Many thanks to Professor Pat Morin for a well written textbook and readable impl
 
 > lds - LuaJIT Data Structures
 > 
-> Copyright (c) 2012 Evan Wies.  All rights reserved
+> Copyright (c) 2012-2014 Evan Wies.  All rights reserved
 > 
 > Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 > 
 > The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 > 
 > THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-
-## Footnotes
-
-  [^1]: [Discussion of LuaJIT memory and GC limits.](http://lua-users.org/lists/lua-l/2010-11/msg00241.html)
 

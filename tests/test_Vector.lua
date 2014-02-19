@@ -1,56 +1,80 @@
 --[[
 lds - LuaJIT Data Structures
 
-Copyright (c) 2012 Evan Wies.  All righs reserved.
-See the COPYRIGHT file for licensing.
+Copyright (c) 2012-2014 Evan Wies.  All rights reserved.
+MIT License, see the COPYRIGHT file.
 
 Exercises lds.Vector
 --]]
 
 local ffi = require 'ffi'
 local lds = require 'lds/Vector'
+require 'lds/allocator'
 
 local double_t = ffi.typeof('double')
 
-local dv_t = lds.VectorT( double_t )
+for _, ct in pairs{ lds.uint32_t, double_t, lds.size_t } do
+    for _, alloc in pairs{ lds.MallocAllocator,
+                           lds.VLAAllocator,
+                           lds.JemallocAllocator,
+                         } do
+        local dv_t = lds.VectorT( ct, alloc )
 
-local dv = dv_t()
+        local v = dv_t()
 
-assert( #dv == 0 )
-assert( dv:size() == 0 )
-assert( dv:empty() )
+        assert( #v == 0 )
+        assert( v:size() == 0 )
+        assert( v:empty() )
+        assert( v:get(1) == false )
+        assert( v:front() == false )
+        assert( v:back() == false )
 
-dv:insert( 0, 6 )
-assert( #dv == 1 )
-assert( dv:size() == 1 )
-assert( dv:get(0) == 6 )
+        v:insert( 0, 6 )
+        assert( #v == 1 )
+        assert( v:size() == 1 )
+        assert( v:get(0) == 6 )
+        assert( v:get(0) == 6 )
+        assert( v:front() == 6 )
+        assert( v:back() == 6 )
 
-dv:insert( 0, 5 )
-assert( #dv == 2 )
-assert( dv:size() == 2 )
-assert( dv:get(0) == 5 )
-assert( dv:get(1) == 6 )
+        v:insert( 0, 5 )
+        assert( #v == 2 )
+        assert( v:size() == 2 )
+        assert( v:get(0) == 5 )
+        assert( v:get(1) == 6 )
+        assert( v:front() == 5 )
+        assert( v:back() == 6 )
 
-assert( dv:set(1, 7) == 6 )
-assert( dv:get(1) == 7 )
+        assert( v:set(1, 7) == 6 )
+        assert( v:get(1) == 7 )
+        assert( v:front() == 5 )
+        assert( v:back() == 7 )
 
-assert( dv:erase(0) == 5 )
-assert( #dv == 1 )
-assert( dv:size() == 1 )
-assert( dv:get(0) == 7 )
+        assert( v:erase(0) == 5 )
+        assert( #v == 1 )
+        assert( v:size() == 1 )
+        assert( v:get(0) == 7 )
+        assert( v:front() == 7 )
+        assert( v:back() == 7 )
 
-dv:insert( 0, 5 )
-dv:insert( 0, 5 )
-dv:clear()
-assert( #dv == 0 )
-assert( dv:size() == 0 )
-assert( dv:empty() )
+        v:insert( 0, 5 )
+        v:insert( 0, 5 )
+        v:clear()
+        assert( #v == 0 )
+        assert( v:size() == 0 )
+        assert( v:empty() )
+        assert( v:front() == false )
+        assert( v:back() == false )
 
-dv:push_back( 2 )
-assert( #dv == 1 )
-assert( dv:size() == 1 )
-assert( dv:get(0) == 2 )
+        v:push_back( 2 )
+        assert( #v == 1 )
+        assert( v:size() == 1 )
+        assert( v:get(0) == 2 )
 
-assert( dv:pop_back() == 2 )
-assert( #dv == 0 )
-assert( dv:size() == 0 )
+        assert( v:pop_back() == 2 )
+        assert( #v == 0 )
+        assert( v:size() == 0 )
+
+        v:shrink_to_fit()
+    end
+end
