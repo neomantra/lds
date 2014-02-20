@@ -9,20 +9,21 @@
 -- Does not load jemalloc, this must be done explicitly by the client
 -- either with ffi.load or through a preload mechanism.
 --
--- Only binds the 'non-standard API'
 -- Adheres to API version 3.5.0
 --
 
-
--- jemalloc uses an optional copmile-time prefix.
--- users must determine the prefix and assign it either to the global
--- variable JEMALLOC_PREFIX (set prior to the first `require` of this library),
--- or set the environment variable JEMALLOC_PREFIX.
--- Defaults to no prefix.
-local JEMALLOC_PREFIX = JEMALLOC_PREFIX or os.getenv('JEMALLOC_PREFIX') or ''
-
 local ffi = require 'ffi'
 local C = ffi.C
+local pcall = pcall
+
+-- jemalloc uses an optional compile-time prefix (specified using --with-jemalloc-prefix).
+-- Clients must determine the prefix and assign it either to the global
+-- variable JEMALLOC_PREFIX (set prior to the first `require` of this library),
+-- or set the environment variable JEMALLOC_PREFIX.
+-- Defaults to no prefix, except on OSX where it is 'je_'.
+local JEMALLOC_PREFIX = JEMALLOC_PREFIX or
+                        os.getenv('JEMALLOC_PREFIX') or
+                        (ffi.os == 'OSX' and 'je_' or '')
 
 do
     local cdef_template = [[
@@ -57,14 +58,16 @@ end
 -- our public API
 local J = {}
 
+
 do
+    J.EINVAL, J.ENOENT, J.EPERM, J.EFAULT, J.ENOMEM = 22, 2, 1, 14, 12
     local abi_os = ffi.os:lower()
     if abi_os == 'linux' then
-        J.EINVAL, J.ENOENT, J.EPERM, J.EFAULT, J.EAGAIN = 22, 2, 1, 14, 11
+        J.EAGAIN = 11
     elseif abi_os == 'osx' then
-        J.EINVAL, J.ENOENT, J.EPERM, J.EFAULT, J.EAGAIN = 22, 2, 1, 14, 35
+        J.EAGAIN = 35
     elseif abi_os == 'bsd' then
-        J.EINVAL, J.ENOENT, J.EPERM, J.EFAULT, J.EAGAIN = 22, 2, 1, 14, 35 
+        J.EAGAIN = 35 
     else
         error('unsupported OS: '..abi_os)
     end
@@ -206,6 +209,7 @@ do
     local oldlenp = ffi.new('size_t[1]')
 
     -- TODO: load the MIBs at load-time and use them instead
+    --- return the value on success, otherwise nil, error
     function J.mallctl_read( param )
         local entry = mallctl_params[param]
         if not entry then return nil, 'invalid parameter' end
@@ -225,9 +229,33 @@ do
         end
     end
 
-    -- TODO: malloctl_write
+    -- returns true on success, otherwise false, error
+    -- Note: relies upon LuaJIT's conversions (http://luajit.org/ext_ffi_semantics.html)
+    -- which may throw an error if the conversion is invalid.  This error is 
+    -- caught and returned as a string.
     function J.mallctl_write( param, value )
-        return nil, 'not implemented yet'
+        local entry = mallctl_params[param]
+        if not entry then return nil, 'invalid parameter' end
+        if not entry[3] then return nil, 'parameter is not writable' end
+
+        local newp = entry[1]                           -- newp may be nil for the non-rw entries,
+        local newlenp = newp and ffi.sizeof(newp) or 0  -- so set 0 size in that case
+
+        -- put the value into the holder (unless it is nil)
+        if newp then
+            -- an invalid conversion may throw an error, pcall it
+            local success, err = pcall(function() newp[0] = value end)
+            if not success then
+                return nil, err
+            end
+        end
+
+        local err = C[mallctl_fname]( param, nil, nil, newp, newlenp )
+        if err ~= 0 then
+            return nil, err
+        else
+            return true
+        end
     end
 end
 
@@ -242,6 +270,82 @@ do
 end
 
 
+function J.get_prefix()
+    return JEMALLOC_PREFIX
+end
+
+
+-------------------------------------------------------------------------------
+-- bind "standard" API to C namespace
+
+do
+    local cdef_template = [[
+void *!_!malloc(size_t size);
+void *!_!calloc(size_t number, size_t size);
+int !_!posix_memalign(void **ptr, size_t alignment, size_t size);
+void *!_!aligned_alloc(size_t alignment, size_t size);
+void *!_!realloc(void *ptr, size_t size);
+void !_!free(void *ptr);
+]]
+    local cdef_bound = nil
+
+    -- returns true if successful
+    -- successive invocations return the previously returned values
+    function J.bind_standard_api()
+        if cdef_bound == true then
+            return true
+        elseif cdef_bound ~= nil then
+            return nil, cdef_bound
+        end
+
+        local cdef_str = string.gsub(cdef_template, '!_!', JEMALLOC_PREFIX)
+        local success, err = pcall(function() ffi.cdef(cdef_str) end)
+        if not success then
+            cdef_bound = err
+            return nil, err
+        end
+        cdef_bound = true
+
+        local malloc_fname = JEMALLOC_PREFIX..'malloc'
+        function J.malloc( size )
+            local ptr = C[malloc_fname]( size )
+            if ptr then return ptr else return nil, ffi.errno() end
+        end
+
+        local calloc_fname = JEMALLOC_PREFIX..'calloc'
+        function J.calloc( number, size )
+            local ptr = C[calloc_fname]( number, size )
+            if ptr then return ptr else return nil, ffi.errno() end
+        end
+
+        local posix_memalign_fname = JEMALLOC_PREFIX..'posix_memalign'
+        function J.posix_memalign( ptr, alignment, size )
+            local err = C[posix_memalign_fname]( ptr, alignment, size )
+            if err == 0 then return true else return nil, err end
+        end
+
+        local aligned_alloc_fname = JEMALLOC_PREFIX..'aligned_alloc'
+        function J.aligned_alloc( alignment, size )
+            local ptr = C[aligned_alloc_fname]( alignment, size )
+            if ptr then return ptr else return nil, ffi.errno() end
+        end
+
+        local realloc_fname = JEMALLOC_PREFIX..'realloc'
+        function J.realloc( ptr, size )
+            local ptr = C[realloc_fname]( ptr, size )
+            if ptr then return ptr else return nil, ffi.errno() end
+        end
+
+        local free_fname = JEMALLOC_PREFIX..'free'
+        function J.free( ptr )
+            C[free_fname]( ptr )
+        end
+
+        return true
+    end
+end
+
+
 -------------------------------------------------------------------------------
 -- bind "non-standard" API
 
@@ -252,12 +356,12 @@ do
     end
 
     local rallocx_fname = JEMALLOC_PREFIX..'rallocx'
-    function J.rallocx( ptr, size, flags)
+    function J.rallocx( ptr, size, flags )
         return C[rallocx_fname]( ptr, size, flags or 0 )
     end
 
     local xallocx_fname = JEMALLOC_PREFIX..'xallocx'
-    function J.xallocx( ptr, size, extra, flags)
+    function J.xallocx( ptr, size, extra, flags )
         return C[xallocx_fname]( ptr, size, flags or 0 )
     end
 
@@ -303,17 +407,20 @@ end
 local LG_SIZEOF_PTR = math.log(ffi.sizeof('void*')) / math.log(2)
 local INT_MAX = 2147483647  -- TODO: universally true?
 
-function J.MALLOCX_LG_ALIGN(la)
+-- make bit.bor available to combine parameters
+J.bor = bit.bor
+
+function J.MALLOCX_LG_ALIGN( la )
     return la
 end
 
 if LG_SIZEOF_PTR == 2 then
-    function J.MALLOCX_ALIGN(a)
+    function J.MALLOCX_ALIGN( a )
         a = a or 0
         return (C.ffs(a)-1)
     end
 else
-    function J.MALLOCX_ALIGN(a)
+    function J.MALLOCX_ALIGN( a )
         a = a or 0
         return (a < INT_MAX) and (C.ffs(a)-1) or (C.ffs(bit.rshift(a,32))+31)
     end
@@ -324,7 +431,7 @@ function J.MALLOCX_ZERO()
 end
 
 -- Bias arena index bits so that 0 encodes "MALLOCX_ARENA() unspecified".
-function J.MALLOCX_ARNEA(a)
+function J.MALLOCX_ARENA( a )
     return bit.lshift((a+1), 8)  -- TODO: limit to 32 bits?
 end
 

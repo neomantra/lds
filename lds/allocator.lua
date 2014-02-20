@@ -178,6 +178,8 @@ local success, J =  pcall(function() return require 'lds/jemalloc' end)
 
 if success and J then
 
+    lds.J = J  -- make jemalloc lib immediately available to clients
+
     local JeallocAllocatorT__mt = {
         __index = {
             allocate  = function(self, n)
@@ -214,7 +216,7 @@ if success and J then
         return lds.JemallocAllocatorT( ct, flags )()
     end
 
-end -- jemalloc required?
+end -- was jemalloc required?
 
 
 -- Return the lds API
