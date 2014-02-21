@@ -225,7 +225,7 @@ end
 
 
 function lds.Array( ct, size, allocator_class )
-    return lds.ArrayT( ct, allocator_class )( n_max )
+    return lds.ArrayT( ct, allocator_class )( size )
 end
 
 
