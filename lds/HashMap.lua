@@ -49,7 +49,7 @@ struct {
 
 local function HashMapT__hash( self, x )
     return brshift(
-        (self.__z * lds.hash(x)),
+        (self.__z * tonumber(x)), -- lds.hash(x)),
         (32 - self.__dim) )  -- HashMapT__w = 32
 end
 
