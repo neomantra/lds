@@ -180,16 +180,20 @@ if success and J then
 
     lds.J = J  -- make jemalloc lib immediately available to clients
 
-    local JeallocAllocatorT__mt = {
+    local JemallocAllocatorT__mt = {
         __index = {
             allocate  = function(self, n)
                 return J.mallocx( n * self._ct_size, self._flags )
             end,
             deallocate = function(self, p)
-                if p ~= 0 then J.dallocx(p) end
+                if p ~= nil then J.dallocx(p, self._flags) end
             end,
             reallocate = function(self, p, n)
-                return C.rallocx(p, n)
+                if p == nil then
+                    return J.mallocx( n * self._ct_size, self._flags )
+                else
+                    return J.rallocx(p, n, self._flags)
+                end
             end,
         }
     }
@@ -200,10 +204,10 @@ if success and J then
         if type(ct) ~= 'cdata' then error("argument 1 is not a valid 'cdata'") end
 
         -- clone the metatable and insert type-specific data
-        local t_mt = lds.simple_deep_copy(MallocAllocatorT__mt)
+        local t_mt = lds.simple_deep_copy(JemallocAllocatorT__mt)
         t_mt.__index._ct = ct
         t_mt.__index._ct_size = ffi.sizeof(ct)
-        t_mt.__index._flags = flags or J.MALLOCX_ZERO
+        t_mt.__index._flags = flags or J.MALLOCX_ZERO()
 
         local t_anonymous = ffi.typeof( "struct {}" )
         return ffi.metatype( t_anonymous, t_mt )
