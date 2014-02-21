@@ -352,32 +352,32 @@ end
 do
     local mallocx_fname = JEMALLOC_PREFIX..'mallocx'
     function J.mallocx( size, flags )
-        return C[mallocx_fname]( size, flags or 0 )
+        return C[mallocx_fname]( size, flags and tonumber(flags) or 0 )
     end
 
     local rallocx_fname = JEMALLOC_PREFIX..'rallocx'
     function J.rallocx( ptr, size, flags )
-        return C[rallocx_fname]( ptr, size, flags or 0 )
+        return C[rallocx_fname]( ptr, size, flags and tonumber(flags) or 0 )
     end
 
     local xallocx_fname = JEMALLOC_PREFIX..'xallocx'
     function J.xallocx( ptr, size, extra, flags )
-        return C[xallocx_fname]( ptr, size, flags or 0 )
+        return C[xallocx_fname]( ptr, size, flags and tonumber(flags) or 0 )
     end
 
     local sallocx_fname = JEMALLOC_PREFIX..'sallocx'
     function J.sallocx( ptr, flags )
-        return C[sallocx_fname]( ptr, flags or 0 )
+        return C[sallocx_fname]( ptr, flags and tonumber(flags) or 0 )
     end
 
     local dallocx_fname = JEMALLOC_PREFIX..'dallocx'
     function J.dallocx( ptr, flags)
-        return C[dallocx_fname]( ptr, flags or 0 )
+        return C[dallocx_fname]( ptr, flags and tonumber(flags) or 0 )
     end
 
     local nallocx_fname = JEMALLOC_PREFIX..'nallocx'
     function J.nallocx( size, flags)
-        return C[nallocx_fname]( ptr, flags or 0 )
+        return C[nallocx_fname]( ptr, flags and tonumber(flags) or 0 )
     end
 
     local malloc_usable_size_fname = JEMALLOC_PREFIX..'malloc_usable_size'
