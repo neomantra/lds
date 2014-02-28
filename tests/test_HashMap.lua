@@ -65,6 +65,10 @@ for _, alloc in pairs{ lds.MallocAllocator,
     assert( vals[3] == 23 )
     assert( vals[4] == 77 )
 
+    -- test get_internals
+    local t = hm:get_internals()
+    assert( t.size == hm:size() )
+
     hm:clear()
     assert( hm:size() == 0 )
     assert( hm:empty() )

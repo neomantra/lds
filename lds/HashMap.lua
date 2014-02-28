@@ -214,6 +214,34 @@ end
 
 
 ------------------------------
+-- Testing functions
+
+-- Returns a Lua table with internal information about the HashMap.
+--
+-- This table has keys: tsize, size, dim, z, and buckets
+-- 'buckets' is an array of tables with keys `size` and `cap`, representing
+-- the size and capacity of the i'th bucket.
+--
+-- Generally for diagnostics
+function HashMap:get_internals()
+    local t = {
+        tsize   = self.__tsize,
+        size    = self.__size,
+        dim     = self.__dim,
+        z       = self.__z,
+        buckets = {},  -- size, cap
+    }
+    for i = 0, self.__tsize-1 do
+        t.buckets[#t.buckets+1] = {
+            size = self.__t[i]:size(),
+            cap  = self.__t[i]:capacity(),
+        }
+    end
+    return t
+end
+
+
+------------------------------
 -- Metatable
 
 local HashMapT_mt = {
