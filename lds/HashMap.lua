@@ -11,7 +11,6 @@ A map implemented as a chained hash table.
 Implementation is based on ChainedHashTable at opendatastructures.org:
 http://opendatastructures.org/ods-cpp/5_1_Hashing_with_Chaining.html
 
-TODO: iterator
 TODO: fixup hash function
 TODO: reserve buckets, e.g. unordered_map::reserve, max_load_factor
 
@@ -126,6 +125,32 @@ function HashMap:find( k )
     end
     return nil
 end
+
+
+--- Returns an iterator, suitable for the Lua `for` loop, over all the pairs of the HashMap.
+-- Each iteration yields an single object with fields `key` and `val`.
+-- As this is a chained hash map. there is no logical order to the iteration.
+--
+-- Modify the HashMap (via insert/remove/clear) during iteration 
+-- invalidates the iterator. *BE CAREFUL!*
+--
+-- @return iterator function
+function HashMap:iter()
+    -- i: index over all the buckets 
+    -- j: index within a bucket
+    local i, j = 0, -1
+    return function()
+        local t = self.__t[i]
+        j = j + 1
+        while j >= t:size() do
+            i, j = i + 1, 0
+            if i >= self.__tsize then return nil end
+            t = self.__t[i]
+        end
+        return t:get(j)
+    end
+end
+
 
 
 ------------------------------

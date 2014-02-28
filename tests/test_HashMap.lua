@@ -48,6 +48,23 @@ for _, alloc in pairs{ lds.MallocAllocator,
     assert( hm:find(7).val == 23.0 )
     assert( hm:find(100054).val == 77.0 )
 
+    -- test iterator
+    local keys, vals = {}, {}
+    for pair in hm:iter() do
+        keys[#keys+1], vals[#keys+1] = pair.key, pair.val
+    end
+    table.sort(keys) ; table.sort(vals)
+    assert( #keys == 4 )
+    assert( keys[1] == 5 )
+    assert( keys[2] == 6 )
+    assert( keys[3] == 7 )
+    assert( keys[4] == 100054 )
+    assert( #vals == 4 )
+    assert( vals[1] == 21 )
+    assert( vals[2] == 22 )
+    assert( vals[3] == 23 )
+    assert( vals[4] == 77 )
+
     hm:clear()
     assert( hm:size() == 0 )
     assert( hm:empty() )
