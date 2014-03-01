@@ -14,6 +14,10 @@ http://opendatastructures.org/ods-cpp/5_1_Hashing_with_Chaining.html
 TODO: fixup hash function
 TODO: reserve buckets, e.g. unordered_map::reserve, max_load_factor
 
+Conventions:
+    private cdata fields are prefixed with _
+    private class fields (via metatable) are prefixed with __
+    private methods are prefixed with HashMapT__
 --]]
 
 
@@ -37,45 +41,45 @@ struct {
 
 local HashMapT_cdef = [[
 struct {
-    $ * __t; // lds.Vector<PairT>
-    int __tsize;
-    int __size;
-    int __dim;
-    int __z;
+    $ * _t; // lds.Vector<PairT>
+    int _tsize;
+    int _size;
+    int _dim;
+    int _z;
 }
 ]]
 
 
 local function HashMapT__hash( self, x )
     return brshift(
-        (self.__z * tonumber(x)), -- lds.hash(x)),
-        (32 - self.__dim) )  -- HashMapT__w = 32
+        (self._z * tonumber(x)), -- lds.hash(x)),
+        (32 - self._dim) )  -- HashMapT__w = 32
 end
 
 
 local function HashMapT__resize( self )
-    self.__dim = 1
-    while blshift(1, self.__dim) <= self.__size do self.__dim = self.__dim + 1 end
-    local shift_dim = blshift( 1, self.__dim )
-    if shift_dim == self.__tsize then return end  -- don't need to resize
+    self._dim = 1
+    while blshift(1, self._dim) <= self._size do self._dim = self._dim + 1 end
+    local shift_dim = blshift( 1, self._dim )
+    if shift_dim == self._tsize then return end  -- don't need to resize
 
     local ptr = self.__talloc:allocate( shift_dim )
-    local new_t = ffi.cast( self.__t, ptr )
+    local new_t = ffi.cast( self._t, ptr )
     for i = 0, shift_dim-1 do
         self.__vt.__construct(new_t[i])
     end
 
-    for i = 0, self.__tsize-1 do
-        for j = 0, self.__t[i]:size()-1 do
-            local pair = self.__t[i]:get(j)
+    for i = 0, self._tsize-1 do
+        for j = 0, self._t[i]:size()-1 do
+            local pair = self._t[i]:get(j)
             new_t[HashMapT__hash(self, pair.key)]:push_back(pair)
         end
-        self.__vt.__destruct( self.__t[i] )
+        self.__vt.__destruct( self._t[i] )
     end
-    self.__talloc:deallocate( self.__t )
+    self.__talloc:deallocate( self._t )
 
-    self.__t = new_t
-    self.__tsize = shift_dim
+    self._t = new_t
+    self._tsize = shift_dim
 end
 
 
@@ -92,18 +96,19 @@ local HashMap = {}
 --
 -- The __len metamethod returns the same value so you can use the # operator
 --
--- It can also be accessed as the field `__size`, although
--- you should never write to this youself.
+-- If you are seeing performance warnings with -jv (e.g. loop unroll limit),
+-- it can also be accessed as the field `_size`, but you should never write
+-- to this youself.
 --
 -- @return Returns the number of elements in the HashMap. 
 function HashMap:size()
-    return self.__size
+    return self._size
 end
 
 --- Returns true if the HashMap is empty.
 -- @return true if the HashMap size is 0, false otherwise.
 function HashMap:empty()
-    return self.__size == 0
+    return self._size == 0
 end
 
 
@@ -118,7 +123,7 @@ end
 -- @param k Key of the element to find.
 -- @return The key/value pair at the specified key in the HashMap.
 function HashMap:find( k )
-    local list = self.__t[HashMapT__hash(self, k)]
+    local list = self._t[HashMapT__hash(self, k)]
     for i = 0, list:size()-1 do
         local pair = list:get(i)
         if k == pair.key then return pair end
@@ -140,12 +145,12 @@ function HashMap:iter()
     -- j: index within a bucket
     local i, j = 0, -1
     return function()
-        local t = self.__t[i]
+        local t = self._t[i]
         j = j + 1
         while j >= t:size() do
             i, j = i + 1, 0
-            if i >= self.__tsize then return nil end
-            t = self.__t[i]
+            if i >= self._tsize then return nil end
+            t = self._t[i]
         end
         return t:get(j)
     end
@@ -174,15 +179,15 @@ function HashMap:insert( k, v )
         return old_val
     end
 
-    if (self.__size + 1) > self.__t:size() then HashMapT__resize(self) end
+    if (self._size + 1) > self._t:size() then HashMapT__resize(self) end
     local j = HashMapT__hash(self, k) 
     -- initialization of nested structs are not compiled,
     -- so we use a pre-allocated placeholder, `_pt_scratch`, stored in the metatable
     -- otherwise, this would just be: self.t[j]:push_back(self.__pt(k, v))
     local pt = self.__pt_scratch
     pt.key, pt.val = k, v
-    self.__t[j]:push_back(pt)
-    self.__size = self.__size + 1
+    self._t[j]:push_back(pt)
+    self._size = self._size + 1
     return true
 end
 
@@ -191,13 +196,13 @@ end
 -- @param  k  Key to remove
 -- @return The item previously at the key, or nil if absent.
 function HashMap:remove( k )
-    local list = self.__t[HashMapT__hash(self, k)]
+    local list = self._t[HashMapT__hash(self, k)]
     for i = 0, list:size()-1 do
         local y = list:get( i )
         if k == y.key then
             local old_val = y.val
             list:erase( i )
-            self.__size = self.__size - 1
+            self._size = self._size - 1
             return old_val
         end
     end
@@ -208,7 +213,7 @@ end
 --- Clears all the elements from the HashMap.
 -- The allocated memory is reclaimed.
 function HashMap:clear()
-    self.__size = 0
+    self._size = 0
     HashMapT__resize( self )
 end
 
@@ -225,16 +230,16 @@ end
 -- Generally for diagnostics
 function HashMap:get_internals()
     local t = {
-        tsize   = self.__tsize,
-        size    = self.__size,
-        dim     = self.__dim,
-        z       = self.__z,
+        tsize   = self._tsize,
+        size    = self._size,
+        dim     = self._dim,
+        z       = self._z,
         buckets = {},  -- size, cap
     }
-    for i = 0, self.__tsize-1 do
+    for i = 0, self._tsize-1 do
         t.buckets[#t.buckets+1] = {
-            size = self.__t[i]:size(),
-            cap  = self.__t[i]:capacity(),
+            size = self._t[i]:size(),
+            cap  = self._t[i]:capacity(),
         }
     end
     return t
@@ -249,31 +254,31 @@ local HashMapT_mt = {
     __new = function( hmt )
         local ptr = hmt.__talloc:allocate( 2 )
         local hm = ffi.new( hmt,
-            ptr,                               -- __t
-            2,                                 -- __tsize
-            0,                                 -- __size
-            1,                                 -- __dim
-            bor(math.random(blshift(1,32)), 1) -- __z, a random odd integer
+            ptr,                               -- _t
+            2,                                 -- _tsize
+            0,                                 -- _size
+            1,                                 -- _dim
+            bor(math.random(blshift(1,32)), 1) -- _z, a random odd integer
                                                --     HashMapT__w = 32
         )
-        for i = 0, hm.__tsize-1 do
-            hm.__vt.__construct(hm.__t[i])
+        for i = 0, hm._tsize-1 do
+            hm.__vt.__construct(hm._t[i])
         end
         return hm
     end,
 
     __gc = function( self )
-        for i = 0, self.__tsize-1 do
-            self.__vt.__destruct(self.__t[i])
+        for i = 0, self._tsize-1 do
+            self.__vt.__destruct(self._t[i])
         end
-        self.__vt.__alloc:deallocate( self.__t )
+        self.__vt.__alloc:deallocate( self._t )
     end,
 
     --- __len metamethod, returning the number of elements in the HashMap. 
-    -- See also HashMap:size() and HashMap.__size
+    -- See also HashMap:size() and HashMap._size
     -- @return The number of elements in the HashMap. 
     __len = function( self )
-        return self.__size
+        return self._size
     end,
 
     __index = HashMap,

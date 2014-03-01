@@ -11,6 +11,10 @@ Fixed-sized array of FFI cdata.
 <p>Array is a fixed-sized container.
 Index counting starts at zero, rather than Lua's one-based indexing.
 
+Conventions:
+    private cdata fields are prefixed with _
+    private class fields (via metatable) are prefixed with __
+
 --]]
 
 local lds = require 'lds/allocator'
@@ -21,8 +25,8 @@ local C = ffi.C
 
 local ArrayT__cdef = [[
 struct {
-    $ *    __data;
-    size_t __size;
+    $ *    _data;
+    size_t _size;
 }
 ]]
 
@@ -37,12 +41,15 @@ local Array = {}
 
 --- Returns the number of elements (not bytes) in the Array.
 --
--- It can also be accessed witht the # operator, and also as the
--- field `_size`, although you should never write to this youself.
+-- It can also be accessed witht the # operator.
+
+-- If you are seeing performance warnings with -jv (e.g. loop unroll limit),
+-- it can also be accessed as the field `_size`, but you should never write
+-- to this youself.
 --
 -- @return Returns the number of elements (not bytes) in the Array.
 function Array:size()
-    return self.__size
+    return self._size
 end
 
 
@@ -50,14 +57,14 @@ end
 -- This is only true for 0-size arrays.
 -- @return true if the Array size is 0, false otherwise.
 function Array:empty()
-    return self.__size == 0
+    return self._size == 0
 end
 
 
 --- Returns the size of the Array in bytes (not elements)
 -- @return Returns the number of bytes (not elements) in the Array.
 function Array:size_bytes()
-    return self.__size * self.__ct_size
+    return self._size * self.__ct_size
 end
 
 
@@ -73,8 +80,8 @@ end
 -- Note that the first element has an index of 0, not 1.
 --
 function Array:get( i )
-    if i < 0 or i >= self.__size then return false end
-    return self.__data[i]
+    if i < 0 or i >= self._size then return false end
+    return self._data[i]
 end
 
 
@@ -89,8 +96,8 @@ end
 -- Note that the first element has an index of 0, not 1.
 --
 function Array:get_e( i )
-    if i < 0 or i >= self.__size then lds.error("ArrayT.get: index out of bounds") end
-    return self.__data[i]
+    if i < 0 or i >= self._size then lds.error("ArrayT.get: index out of bounds") end
+    return self._data[i]
 end
 
 
@@ -98,8 +105,8 @@ end
 -- Returns `false` if the Array is empty.
 -- @return Returns the value of the first element of the Array, or `false` if the Array is empty.
 function Array:front()
-    if self.__size == 0 then return false end
-    return self.__data[0]
+    if self._size == 0 then return false end
+    return self._data[0]
 end
 
 
@@ -107,15 +114,15 @@ end
 -- Returns `false` if the Array is empty.
 -- @return Returns the value of the last element of the Array, or `false` if the Array is empty.
 function Array:back()
-    if self.__size == 0 then return nil end
-    return self.__data[self.__size - 1]
+    if self._size == 0 then return nil end
+    return self._data[self._size - 1]
 end
 
 
 --- Returns a pointer to the underlying array.
 --- @return Pointer to the underlying array.
 function Array:data()
-    return self.__data
+    return self._data
 end
 
 
@@ -136,9 +143,9 @@ end
 -- @return The previous element at the specified index in the Array,
 -- or false if the index is out of range.
 function Array:set( i, x )
-    if i < 0 or i >= self.__size then return false end
-    local prev = self.__data[i]
-    self.__data[i] = x
+    if i < 0 or i >= self._size then return false end
+    local prev = self._data[i]
+    self._data[i] = x
     return prev
 end
 
@@ -157,9 +164,9 @@ end
 --
 -- @return The previous element at the specified index in the Array.
 function Array:set_e( i, x )
-    if i < 0 or i >= self.__size then lds.error("ArrayT.set: index out of bounds") end
-    local prev = self.__data[i]
-    self.__data[i] = x
+    if i < 0 or i >= self._size then lds.error("ArrayT.set: index out of bounds") end
+    local prev = self._data[i]
+    self._data[i] = x
     return prev
 end
 
@@ -168,18 +175,18 @@ end
 -- Private methods
 
 -- Constructor method
-function Array:_construct( size )
+function Array:__construct( size )
     local data = self.__alloc:allocate(size)
     if not data then lds.error('ArrayT.new allocation failed') end
-    self.__data, self.__size = data, size
+    self._data, self._size = data, size
     return self  -- for chaining
 end
 
 
 -- Destructor method
-function Array:_destruct()
-    self.__alloc:deallocate(self.__data)
-    self.__data, self.__size = nil, 0
+function Array:__destruct()
+    self.__alloc:deallocate(self._data)
+    self._data, self._size = nil, 0
     return self  -- for chaining
 end
 
@@ -191,18 +198,18 @@ local ArrayT__mt = {
 
     __new = function( at, size )
         local self = ffi.new(at)
-        return self:_construct(size)
+        return self:__construct(size)
     end,
 
     __gc = function( self )
-        self:_destruct()
+        self:__destruct()
     end,
 
     --- __len metamethod, returning the number of elements in the Array. 
-    -- See also Array:size() and Array.__size
+    -- See also Array:size() and Array._size
     -- @return The number of elements in the Array. 
     __len = function( self )
-        return self.__size
+        return self._size
     end,
 
     __index = Array,

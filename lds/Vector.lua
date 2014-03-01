@@ -10,6 +10,11 @@ Dynamic array of FFI cdata.
 
 Index counting starts at zero, rather than Lua's one-based indexing.
 
+Conventions:
+    private cdata fields are prefixed with _
+    private class fields (via metatable) are prefixed with __
+    private methods are prefixed with VectorT__
+
 --]]
 
 local lds = require 'lds/allocator'
@@ -20,9 +25,9 @@ local C = ffi.C
 
 local VectorT__cdef = [[
 struct {
-    $ * __data;
-    int __size;
-    int __cap;
+    $ * _data;
+    int _size;
+    int _cap;
 }
 ]]
 
@@ -31,12 +36,12 @@ struct {
 -- Like libstd++, it will resize to the larger of
 -- reserve_n or double the capacity.
 local function VectorT__resize( v, reserve_n, shrink_to_fit )
-    local new_cap = math.max(1, reserve_n or 2*v.__cap, shrink_to_fit and 1 or 2*v.__cap)
-    if v.__cap >= new_cap then return end
+    local new_cap = math.max(1, reserve_n or 2*v._cap, shrink_to_fit and 1 or 2*v._cap)
+    if v._cap >= new_cap then return end
 
-    local new_data = v.__alloc:reallocate(v.__data, new_cap*v.__ct_size)
-    v.__data = ffi.cast( v.__data, new_data )
-    v.__cap = new_cap
+    local new_data = v.__alloc:reallocate(v._data, new_cap*v.__ct_size)
+    v._data = ffi.cast( v._data, new_data )
+    v._cap = new_cap
 end 
 
 
@@ -54,12 +59,13 @@ local Vector = {}
 --
 -- The __len metamethod returns the same value so you can use the # operator
 --
--- It can also be accessed as the field `__size`, although
--- you should never write to this youself.
+-- If you are seeing performance warnings with -jv (e.g. loop unroll limit),
+-- it can also be accessed as the field `_size`, but you should never write
+-- to this youself.
 --
 -- @return Returns the number of elements in the Vector. 
 function Vector:size()
-    return self.__size
+    return self._size
 end
 
 
@@ -67,14 +73,14 @@ end
 -- 
 -- @return Returns the number of bytes used by in the Vector. 
 function Vector:size_bytes()
-    return self.__size * self.__ct_size
+    return self._size * self.__ct_size
 end
 
 
 --- Returns true if the Vector is empty.
 -- @return true if the Vector size is 0, false otherwise.
 function Vector:empty()
-    return self.__size == 0
+    return self._size == 0
 end
 
 
@@ -82,7 +88,7 @@ end
 -- This is number of elements the Vector can hold before needing to allocate more memory.
 -- @return The number of elements the Vector can hold before needing to allocate more memory.
 function Vector:capacity()
-    return self.__cap
+    return self._cap
 end
 
 
@@ -90,7 +96,7 @@ end
 -- 
 -- @return Returns the number of bytes of capacity by in the Vector. 
 function Vector:capacity_bytes()
-    return self.__cap * self.__ct_size
+    return self._cap * self.__ct_size
 end
 
 
@@ -107,7 +113,7 @@ end
 
 --- Attempts to free unused memory.
 function Vector:shrink_to_fit()
-    VectorT__resize(self, self.__size, true )  -- true = shrink_to_fit
+    VectorT__resize(self, self._size, true )  -- true = shrink_to_fit
 end
 
 
@@ -128,8 +134,8 @@ end
 --
 -- @return The element at the specified index in the Vector.
 function Vector:get( i )
-    if i < 0 or i >= self.__size then return false end
-    return self.__data[i]
+    if i < 0 or i >= self._size then return false end
+    return self._data[i]
 end
 
 
@@ -145,8 +151,8 @@ end
 --
 -- @return The element at the specified index in the vector.
 function Vector:get_e( i )
-    if i < 0 or i >= self.__size then lds.error("VectorT.get: index out of bounds") end
-    return self.__data[i]
+    if i < 0 or i >= self._size then lds.error("VectorT.get: index out of bounds") end
+    return self._data[i]
 end
 
 
@@ -154,8 +160,8 @@ end
 -- Returns `false` if the Vector is empty.
 -- @return Returns the value of the first element of the Vector.
 function Vector:front()
-    if self.__size == 0 then return false end
-    return self.__data[0]
+    if self._size == 0 then return false end
+    return self._data[0]
 end
 
 
@@ -163,17 +169,17 @@ end
 -- Returns `false` if the Vector is empty.
 -- @return Returns the value of the last element of the Vector.
 function Vector:back()
-    if self.__size == 0 then return false end
-    return self.__data[self.__size-1]
+    if self._size == 0 then return false end
+    return self._data[self._size-1]
 end
 
 
 --- Return pointer for the underlying array.
--- This can also be accessed as the field `__data`, although
+-- This can also be accessed as the field `_data`, although
 -- you should never write to this yourself.
 -- @return Pointer for the underlying array.
 function Vector:data()
-    return self.__data
+    return self._data
 end
 
 
@@ -195,9 +201,9 @@ end
 -- @return The previous element at the specified index in the Vector,
 -- or false if the index is out of range.
 function Vector:set( i, x )
-    if i < 0 or i >= self.__size then return false end
-    local prev = self.__data[i]
-    self.__data[i] = x
+    if i < 0 or i >= self._size then return false end
+    local prev = self._data[i]
+    self._data[i] = x
     return prev
 end
 
@@ -216,9 +222,9 @@ end
 --
 -- @return The previous element at the specified index in the vector.
 function Vector:set_e( i, x )
-    if i < 0 or i >= self.__size then lds.error("VectorT.set: index out of bounds") end
-    local prev = self.__data[i]
-    self.__data[i] = x
+    if i < 0 or i >= self._size then lds.error("VectorT.set: index out of bounds") end
+    local prev = self._data[i]
+    self._data[i] = x
     return prev
 end
 
@@ -233,11 +239,11 @@ end
 -- used the user should consider using std::list.
 function Vector:insert( i, x )
     if type(x) == 'nil' then self:push_back(i) end  -- handle default index like table.insert
-    if i < 0 or i > self.__size then lds.error("insert: index out of bounds") end
-    if self.__size + 1 > self.__cap then VectorT__resize(self) end
-    C.memmove(self.__data+i+1, self.__data+i, (self.__size-i)*self.__ct_size)
-    self.__data[i] = x
-    self.__size = self.__size + 1
+    if i < 0 or i > self._size then lds.error("insert: index out of bounds") end
+    if self._size + 1 > self._cap then VectorT__resize(self) end
+    C.memmove(self._data+i+1, self._data+i, (self._size-i)*self.__ct_size)
+    self._data[i] = x
+    self._size = self._size + 1
 end
 
 
@@ -249,9 +255,9 @@ end
 -- to it.  Due to the nature of a Vector this operation can be
 -- done in constant time if the Vector has preallocated space available.
 function Vector:push_back( x )
-    if self.__size + 1 > self.__cap then VectorT__resize(self) end
-    self.__data[self.__size] = x
-    self.__size = self.__size + 1
+    if self._size + 1 > self._cap then VectorT__resize(self) end
+    self._data[self._size] = x
+    self._size = self._size + 1
 end
 
 
@@ -270,10 +276,10 @@ end
 -- the pointer is the user's responsibilty.
 function Vector:erase( i )
     if type(i) == 'nil' then return self:pop_back() end  -- handle default index like table.remove
-    if i < 0 or i >= self.__size then lds.error("VectorT.erase: index out of bounds") end
-    local x = self.__data[i]
-    C.memmove(self.__data+i, self.__data+i+1, (self.__size-i)*self.__ct_size)
-    self.__size = self.__size - 1
+    if i < 0 or i >= self._size then lds.error("VectorT.erase: index out of bounds") end
+    local x = self._data[i]
+    C.memmove(self._data+i, self._data+i+1, (self._size-i)*self.__ct_size)
+    self._size = self._size - 1
     return x
 end
 
@@ -282,16 +288,16 @@ end
 -- @return The value that was previously the last element, or false if the vector was empty.
 -- This is a typical stack operation. It shrinks the Vector by one.
 function Vector:pop_back()
-    if self.__size == 0 then return false end
-    local x = self.__data[self.__size - 1]
-    self.__size = self.__size - 1
+    if self._size == 0 then return false end
+    local x = self._data[self._size - 1]
+    self._size = self._size - 1
     return x
 end
 
 
 --- Clears all the elements from the Vector.  The allocated memory is unchanged.
 function Vector:clear()
-    self.__size = 0
+    self._size = 0
 end
 
 
@@ -303,9 +309,9 @@ function Vector:__construct( reserve_n )
     if reserve_n and reserve_n > 0 then
         local data = self.__alloc:allocate(n)
         if not data then lds.error('VectorT.new allocation failed') end
-        self.__data, self.__size, self.__cap = data, 0, reserve_n
+        self._data, self._size, self._cap = data, 0, reserve_n
     else
-        self.__data, self.__size, self.__cap = nil, 0, 0
+        self._data, self._size, self._cap = nil, 0, 0
     end
     return self  -- for chaining
 end
@@ -313,8 +319,8 @@ end
 
 -- Destructor method
 function Vector:__destruct()
-    self.__alloc:deallocate(self.__data)
-    self.__data, self.__cap, self.__size = nil, 0, 0
+    self.__alloc:deallocate(self._data)
+    self._data, self._cap, self._size = nil, 0, 0
     return self  -- for chaining
 end
 
@@ -337,7 +343,7 @@ local VectorT__mt = {
     -- See also Vector:size() and Vector.__size
     -- @return The number of elements in the Vector. 
     __len = function( self )
-        return self.__size
+        return self._size
     end,
 
     __index = Vector,
