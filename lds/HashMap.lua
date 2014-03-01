@@ -12,6 +12,7 @@ Implementation is based on ChainedHashTable at opendatastructures.org:
 http://opendatastructures.org/ods-cpp/5_1_Hashing_with_Chaining.html
 
 TODO: fixup hash function
+TODO: option table as: { alloc = AllocatorFactory, hash = fn, eq = fn }
 TODO: reserve buckets, e.g. unordered_map::reserve, max_load_factor
 
 Conventions:
@@ -70,8 +71,8 @@ local function HashMapT__resize( self )
     end
 
     for i = 0, self._tsize-1 do
-        for j = 0, self._t[i]:size()-1 do
-            local pair = self._t[i]:get(j)
+        for j = 0, self._t[i]._size-1 do
+            local pair = self._t[i]._data[j]
             new_t[HashMapT__hash(self, pair.key)]:push_back(pair)
         end
         self.__vt.__destruct( self._t[i] )
@@ -124,8 +125,8 @@ end
 -- @return The key/value pair at the specified key in the HashMap.
 function HashMap:find( k )
     local list = self._t[HashMapT__hash(self, k)]
-    for i = 0, list:size()-1 do
-        local pair = list:get(i)
+    for i = 0, list._size-1 do
+        local pair = list._data[i]
         if k == pair.key then return pair end
     end
     return nil
@@ -147,12 +148,12 @@ function HashMap:iter()
     return function()
         local t = self._t[i]
         j = j + 1
-        while j >= t:size() do
+        while j >= t._size do
             i, j = i + 1, 0
             if i >= self._tsize then return nil end
             t = self._t[i]
         end
-        return t:get(j)
+        return t._data[j]
     end
 end
 
@@ -179,7 +180,7 @@ function HashMap:insert( k, v )
         return old_val
     end
 
-    if (self._size + 1) > self._t:size() then HashMapT__resize(self) end
+    if (self._size + 1) > self._t._size then HashMapT__resize(self) end
     local j = HashMapT__hash(self, k) 
     -- initialization of nested structs are not compiled,
     -- so we use a pre-allocated placeholder, `_pt_scratch`, stored in the metatable
@@ -197,8 +198,8 @@ end
 -- @return The item previously at the key, or nil if absent.
 function HashMap:remove( k )
     local list = self._t[HashMapT__hash(self, k)]
-    for i = 0, list:size()-1 do
-        local y = list:get( i )
+    for i = 0, list._size-1 do
+        local y = list._data[i]
         if k == y.key then
             local old_val = y.val
             list:erase( i )
@@ -238,8 +239,8 @@ function HashMap:get_internals()
     }
     for i = 0, self._tsize-1 do
         t.buckets[#t.buckets+1] = {
-            size = self._t[i]:size(),
-            cap  = self._t[i]:capacity(),
+            size = self._t[i]._size,
+            cap  = self._t[i]._cap,
         }
     end
     return t

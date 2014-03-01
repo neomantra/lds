@@ -55,7 +55,7 @@ local Vector = {}
 --- Returns the number of elements in the Vector. 
 -- 
 -- This is the number of elements in the Vector, not necessarily the total allocated memory.
--- See vector:capacity.
+-- See Vector:capacity.
 --
 -- The __len metamethod returns the same value so you can use the # operator
 --
