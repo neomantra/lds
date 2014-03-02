@@ -12,6 +12,7 @@ Implementation is based on ChainedHashTable at opendatastructures.org:
 http://opendatastructures.org/ods-cpp/5_1_Hashing_with_Chaining.html
 
 TODO: fixup hash function
+TODO: allow 64-bitop in LuaJIT 2.1
 TODO: option table as: { alloc = AllocatorFactory, hash = fn, eq = fn }
 TODO: reserve buckets, e.g. unordered_map::reserve, max_load_factor
 
@@ -105,6 +106,7 @@ local HashMap = {}
 function HashMap:size()
     return self._size
 end
+
 
 --- Returns true if the HashMap is empty.
 -- @return true if the HashMap size is 0, false otherwise.
@@ -259,7 +261,7 @@ local HashMapT_mt = {
             2,                                 -- _tsize
             0,                                 -- _size
             1,                                 -- _dim
-            bor(math.random(blshift(1,32)), 1) -- _z, a random odd integer
+            bor(math.random(0x7FFFFFFF), 1)    -- _z, a random odd integer
                                                --     HashMapT__w = 32
         )
         for i = 0, hm._tsize-1 do
