@@ -114,7 +114,7 @@ end
 -- Returns `false` if the Array is empty.
 -- @return Returns the value of the last element of the Array, or `false` if the Array is empty.
 function Array:back()
-    if self._size == 0 then return nil end
+    if self._size == 0 then return false end
     return self._data[self._size - 1]
 end
 
