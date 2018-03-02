@@ -25,9 +25,9 @@ for _, ct in pairs{ lds.uint32_t, double_t, lds.size_t } do
         assert( #v == 0 )
         assert( v:size() == 0 )
         assert( v:empty() )
-        assert( v:get(1) == false )
-        assert( v:front() == false )
-        assert( v:back() == false )
+        assert( v:get(1) == nil )
+        assert( v:front() == nil )
+        assert( v:back() == nil )
 
         v:insert( 0, 6 )
         assert( #v == 1 )
@@ -63,8 +63,8 @@ for _, ct in pairs{ lds.uint32_t, double_t, lds.size_t } do
         assert( #v == 0 )
         assert( v:size() == 0 )
         assert( v:empty() )
-        assert( v:front() == false )
-        assert( v:back() == false )
+        assert( v:front() == nil )
+        assert( v:back() == nil )
 
         v:push_back( 2 )
         assert( #v == 1 )

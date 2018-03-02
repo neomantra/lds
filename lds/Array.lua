@@ -74,13 +74,13 @@ end
 --- Returns the element at index `i` in the Array.
 --
 -- @param i Index of the element to get.
--- @return The element at the specified index in the Array, or `false` if the index is out of bounds.
+-- @return The element at the specified index in the Array, or `nil` if the index is out of bounds.
 -- See also Array:get_e, which throws an error instead.
 --
 -- Note that the first element has an index of 0, not 1.
 --
 function Array:get( i )
-    if i < 0 or i >= self._size then return false end
+    if i < 0 or i >= self._size then return nil end
     return self._data[i]
 end
 
@@ -91,7 +91,7 @@ end
 -- @return The element at the specified index in the Array.
 --
 -- If this is greater than or equal to the Array size, an "ArrayT.get: index out of bounds" error is thrown.
--- See also Array:get, which returns `false` instead.
+-- See also Array:get, which returns `nil` instead.
 --
 -- Note that the first element has an index of 0, not 1.
 --
@@ -102,17 +102,17 @@ end
 
 
 --- Returns the value of the first element of the Array.
--- Returns `false` if the Array is empty.
--- @return Returns the value of the first element of the Array, or `false` if the Array is empty.
+-- Returns `nil` if the Array is empty.
+-- @return Returns the value of the first element of the Array, or `nil` if the Array is empty.
 function Array:front()
-    if self._size == 0 then return false end
+    if self._size == 0 then return nil end
     return self._data[0]
 end
 
 
 --- Returns the value of the last element of the Array.
--- Returns `false` if the Array is empty.
--- @return Returns the value of the last element of the Array, or `false` if the Array is empty.
+-- Returns `nil` if the Array is empty.
+-- @return Returns the value of the last element of the Array, or `nil` if the Array is empty.
 function Array:back()
     if self._size == 0 then return nil end
     return self._data[self._size - 1]
@@ -132,7 +132,7 @@ end
 --- Set element value at index.
 -- Sets the element `x` at index `i` in the Array.
 --
--- Returns false if the index is out of range.
+-- Returns nil if the index is out of range.
 -- See also Array:set_e, which throws instead.
 --
 -- @param i Index to set in the Array.
@@ -141,9 +141,9 @@ end
 -- Note that the first element has an index of 0, not 1.
 --
 -- @return The previous element at the specified index in the Array,
--- or false if the index is out of range.
+-- or nil if the index is out of range.
 function Array:set( i, x )
-    if i < 0 or i >= self._size then return false end
+    if i < 0 or i >= self._size then return nil end
     local prev = self._data[i]
     self._data[i] = x
     return prev
@@ -154,7 +154,7 @@ end
 -- Sets the element `x` at index `i` in the Array.
 --
 -- Throws error if the index is out of range.
--- See also Array:set, which returns `false instead`.
+-- See also Array:set, which returns `nil` instead.
 --
 -- @param i Index to set in the Array.
 -- @param x Element to set at that index.
