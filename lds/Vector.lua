@@ -125,7 +125,7 @@ end
 --- Get element value at index.
 -- Returns the element at index `i` in the vector.
 --
--- Returns `false` if the index is out of range.
+-- Returns `nil` if the index is out of range.
 -- See also Vector:get_e which throws an error instead.
 --
 -- @param i Index of the element to get
@@ -134,7 +134,7 @@ end
 --
 -- @return The element at the specified index in the Vector.
 function Vector:get( i )
-    if i < 0 or i >= self._size then return false end
+    if i < 0 or i >= self._size then return nil end
     return self._data[i]
 end
 
@@ -143,7 +143,7 @@ end
 -- Returns the element at index `i` in the vector.
 --
 -- Throws error if the index is out of range.
--- See also Vector:get, which returns `false` instead.
+-- See also Vector:get, which returns `nil` instead.
 --
 -- @param i Index of the element to get.
 -- If this is greater than or equal to the vector size, "VectorT.get: index out of bounds" error is thrown.
@@ -157,19 +157,19 @@ end
 
 
 --- Returns the value of the first element of the Vector.
--- Returns `false` if the Vector is empty.
+-- Returns `nil` if the Vector is empty.
 -- @return Returns the value of the first element of the Vector.
 function Vector:front()
-    if self._size == 0 then return false end
+    if self._size == 0 then return nil end
     return self._data[0]
 end
 
 
 --- Returns the value of the last element of the Vector.
--- Returns `false` if the Vector is empty.
+-- Returns `nil` if the Vector is empty.
 -- @return Returns the value of the last element of the Vector.
 function Vector:back()
-    if self._size == 0 then return false end
+    if self._size == 0 then return nil end
     return self._data[self._size-1]
 end
 
@@ -190,7 +190,7 @@ end
 --- Set element value at index.
 -- Sets the element `x` at index `i` in the Vector.
 --
--- Returns false if the index is out of range.
+-- Returns nil if the index is out of range.
 -- See also Vector:set_e, which throws an error instead.
 --
 -- @param i Index to set in the Vector.
@@ -199,9 +199,9 @@ end
 -- Note that the first element has an index of 0, not 1.
 --
 -- @return The previous element at the specified index in the Vector,
--- or false if the index is out of range.
+-- or nil if the index is out of range.
 function Vector:set( i, x )
-    if i < 0 or i >= self._size then return false end
+    if i < 0 or i >= self._size then return nil end
     local prev = self._data[i]
     self._data[i] = x
     return prev
@@ -212,7 +212,7 @@ end
 -- Sets the element `x` at index `i` in the Vector.
 --
 -- Throws error if the index is out of range.
--- See also Vector:set, which returns `false` instead.
+-- See also Vector:set, which returns `nil` instead.
 --
 -- @param i Index to set in the Vector.
 -- @param x Element to set at that index
@@ -285,10 +285,10 @@ end
 
 
 --- Removes last element.
--- @return The value that was previously the last element, or false if the vector was empty.
+-- @return The value that was previously the last element, or nil if the vector was empty.
 -- This is a typical stack operation. It shrinks the Vector by one.
 function Vector:pop_back()
-    if self._size == 0 then return false end
+    if self._size == 0 then return nil end
     local x = self._data[self._size - 1]
     self._size = self._size - 1
     return x
