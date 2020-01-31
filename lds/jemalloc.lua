@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 -- LuaJIT bindings to the jemalloc library
 --
--- Copyright (c) 2014 Evan Wies.
+-- Copyright (c) 2014-2020 Evan Wies.
 -- Released under the MIT license.  See the LICENSE file.
 --
 -- Project home: https://github.com/neomantra/luajit-jemalloc
