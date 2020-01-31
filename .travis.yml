@@ -1,0 +1,23 @@
+# lds .travis.yml
+# Copyright (c) 2020 Evan Wies
+#
+# Testing on Travis CI
+#
+# https://travis-ci.org/neomantra/lds
+#
+
+dist: bionic
+
+addons:
+  apt:
+    packages:
+    - luajit
+    - luarocks
+
+jobs:
+  include:
+    - stage: run unit tests
+      script: ./tests/run_tests.sh
+
+    - stage: test building the rockspec
+      script: luarocks build rockspecs/lds-scm-1.rockspec 
