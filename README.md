@@ -1,6 +1,8 @@
 
 # lds - LuaJIT Data Structures
 
+[![Travis Status](https://travis-ci.org/neomantra/lds.svg?branch=master)](https://travis-ci.org/neomantra/lds)
+
 **lds** provides data structures which hold [LuaJIT *cdata*](http://luajit.org/ext_ffi_api.html).   
 
 These containers cover the common use cases of Lua *tables*:

@@ -6,6 +6,8 @@
 # https://travis-ci.org/neomantra/lds
 #
 
+sudo: required
+
 dist: bionic
 
 addons:
