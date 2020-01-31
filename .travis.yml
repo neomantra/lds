@@ -22,4 +22,4 @@ jobs:
       script: ./tests/run_tests.sh
 
     - stage: test building the rockspec
-      script: luarocks build rockspecs/lds-scm-1.rockspec 
+      script: sudo luarocks build rockspecs/lds-scm-1.rockspec
