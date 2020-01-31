@@ -11,18 +11,34 @@ These containers cover the common use cases of Lua *tables*:
   * Vector (dynamically-sized array)
   * HashMap (key-value store)
 
-## Installation
-
-This library is currently only available as a [GitHub repo](https://github.com/neomantra/lds):
-```
-git clone https://github.com/neomantra/lds.git
-```
-
-To install, clone the repo and copy `lds.lua` and the **lds** directory (the one *inside* the repo) to somewhere on your LUA_PATH.  To use, simply `require` the module and use the returned value:
+After installing the library, simply `require` the module and use the returned value:
 ```
 local lds = require 'lds'
 ```
 
+## Manual Installation
+
+This library is currently only available as a [GitHub repo](https://github.com/neomantra/lds). To install, clone the repo and copy `lds.lua` and the **lds** directory (the one *inside* the repo) to somewhere on your `LUA_PATH`.
+
+
+```
+# The path   /usr/local/share/lua/5.1  is just an example, it is common on Ubuntu platforms
+
+git clone https://github.com/neomantra/lds.git
+cp -r lds/lds.lua lds/lds    /usr/local/share/lua/5.1
+```
+
+
+## LuaRocks Installation
+
+To install from the [LuaRocks](https://luarocks.org/) [rockspec](https://github.com/neomantra/lds/blob/master/rockspecs/lds-scm-1.rockspec):
+
+```
+git clone https://github.com/neomantra/lds.git
+luarocks build rockspecs/lds-scm-1.rockspec
+```
+
+This library is *NOT* officially loaded to the LuaRocks repository.
 
 ## Example
 
@@ -99,8 +115,6 @@ The source is well documented and the implementation is decently readable -- muc
 
   * ldoc in wiki
   * TODOs in HashMap
-  * Rockspec
-
 
 ## Support
 
