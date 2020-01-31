@@ -8,8 +8,8 @@ Exercises lds.Array
 --]]
 
 local ffi = require 'ffi'
-local lds = require 'lds/Array'
-require 'lds/allocator'
+local lds = require 'lds.Array'
+require 'lds.allocator'
 
 local double_t = ffi.typeof('double')
 

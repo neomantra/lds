@@ -17,7 +17,7 @@ Conventions:
 
 --]]
 
-local lds = require 'lds/allocator'
+local lds = require 'lds.allocator'
 
 local ffi = require 'ffi'
 local C = ffi.C

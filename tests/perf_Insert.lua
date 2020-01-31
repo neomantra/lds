@@ -25,7 +25,7 @@ local NUMBER_OF_INSERTS = arg[1] and tonumber(arg[1]) or 1e6
 local ffi = require 'ffi'
 local C = ffi.C
 
-local lds = require 'lds/HashMap'
+local lds = require 'lds.HashMap'
 
 ffi.cdef("int rand(void);");
 local os_clock = os.clock

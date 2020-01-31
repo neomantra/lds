@@ -8,7 +8,7 @@ Exercises lds.HashMap
 --]]
 
 local ffi = require 'ffi'
-local lds = require 'lds/HashMap'
+local lds = require 'lds.HashMap'
 
 local int_t = ffi.typeof('int')
 local double_t = ffi.typeof('double')

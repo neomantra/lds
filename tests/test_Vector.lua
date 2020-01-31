@@ -8,8 +8,8 @@ Exercises lds.Vector
 --]]
 
 local ffi = require 'ffi'
-local lds = require 'lds/Vector'
-require 'lds/allocator'
+local lds = require 'lds.Vector'
+require 'lds.allocator'
 
 local double_t = ffi.typeof('double')
 
