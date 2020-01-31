@@ -14,7 +14,7 @@
 //    -I/opt/local/include
 
 #include <cstdlib>
-#include <cstdio>
+#include <iostream>
 #include <sys/time.h>
 #include <vector>
 #include <boost/lexical_cast.hpp>
